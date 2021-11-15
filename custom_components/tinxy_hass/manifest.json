@@ -1,0 +1,22 @@
+{
+  "domain": "tinxy",
+  "name": "Tinxy",
+  "documentation": "https://github.com/arevindh/tinxy-hass",
+  "dependencies": [],
+  "after_dependencies": [
+    "http"
+  ],
+  "codeowners": [
+    "@arevindh"
+  ],
+  "requirements": [],
+  "iot_class": "cloud_polling",
+  "version": "0.1.0",
+  "config_flow": false,
+  "zeroconf": [
+    {
+      "type": "_http._tcp.local.",
+      "name": "tinxy*"
+    }
+  ]
+}
