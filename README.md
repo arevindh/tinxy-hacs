@@ -11,6 +11,10 @@ Add repository to hacs
 https://github.com/arevindh/tinxy-hacs
 ```
 
+Install Tinxy Smart Devices from hacs
+
+Restart Home Assistant
+
 Get the api key from application 
 
 ```
