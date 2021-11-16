@@ -26,3 +26,6 @@ switch:
 
 Restart Home Assistant
 
+# Current issues
+
+Due to the reponse delay via they api the toggle will have a delay for approx 3s . Status change can be adjusted using `scan_interval` parameter (better to keep this above `7` to avoid slowing the HA server)
