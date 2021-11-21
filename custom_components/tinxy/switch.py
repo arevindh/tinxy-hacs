@@ -63,20 +63,24 @@ def read_devices(api_key):
         traitList = [['action.devices.traits.OnOff']]
         switches = [d for d in jdata if d['typeId']['traits'] in traitList]
         for switch in switches:
-            for index, relay in enumerate(switch['devices']):
-                _LOGGER.warning("add %s with device id %s relay_no %s",
-                                switch["name"]+" "+relay, switch["_id"], str(index))
-                device = {
-                    "identifiers": {
-                        (DOMAIN, switch["_id"])
-                    },
-                    "name": switch["name"],
-                    "manufacturer": "Tinxy",
-                    "model": switch['typeId']['name'],
-                    "sw_version": switch['firmwareVersion']
-                }
+            if switch['typeId']['numberOfRelays'] == 1:
                 list.append(TinxySwitch(api_key,
-                                        switch["_id"], switch["name"]+" "+relay, str(index+1), switch['deviceTypes'][index], device))
+                                        switch["_id"], switch["name"], "1", "Swith", device))
+            else:
+                for index, relay in enumerate(switch['devices']):
+                    _LOGGER.warning("add %s with device id %s relay_no %s",
+                                    switch["name"]+" "+relay, switch["_id"], str(index))
+                    device = {
+                        "identifiers": {
+                            (DOMAIN, switch["_id"])
+                        },
+                        "name": switch["name"],
+                        "manufacturer": "Tinxy",
+                        "model": switch['typeId']['name'],
+                        "sw_version": switch['firmwareVersion']
+                    }
+                    list.append(TinxySwitch(api_key,
+                                            switch["_id"], switch["name"]+" "+relay, str(index+1), switch['deviceTypes'][index], device))
         return list
 
     except requests.ConnectionError as e:
