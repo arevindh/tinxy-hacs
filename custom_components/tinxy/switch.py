@@ -62,16 +62,17 @@ def read_devices(api_key):
         jdata = json.loads(response.text)
         traitList = [['action.devices.traits.OnOff']]
         switches = [d for d in jdata if d['typeId']['traits'] in traitList]
-        device = {
-            "identifiers": {
-                (DOMAIN, switch["_id"])
-            },
-            "name": switch["name"],
-            "manufacturer": "Tinxy",
-            "model": switch['typeId']['name'],
-            "sw_version": switch['firmwareVersion']
-        }
+
         for switch in switches:
+            device = {
+                "identifiers": {
+                    (DOMAIN, switch["_id"])
+                },
+                "name": switch["name"],
+                "manufacturer": "Tinxy",
+                "model": switch['typeId']['name'],
+                "sw_version": switch['firmwareVersion']
+            }
             if switch['typeId']['numberOfRelays'] == 1:
                 list.append(TinxySwitch(api_key,
                                         switch["_id"], switch["name"], "1", "Switch", device))
