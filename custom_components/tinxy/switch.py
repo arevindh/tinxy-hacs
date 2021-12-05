@@ -78,11 +78,15 @@ def read_devices(api_key):
                                         switch["_id"], switch["name"], "1", "Switch", device))
             else:
                 for index, relay in enumerate(switch['devices']):
-                    _LOGGER.warning("add %s with device id %s relay_no %s",
-                                    switch["name"]+" "+relay, switch["_id"], str(index))
+                    if switch["typeId"]["name"] == "WIFI_3SWITCH_1FAN" and index == 0:
+                        """ This is a FAN , will be controlled by another file"""
+                        pass
+                    else:
+                        _LOGGER.warning("add %s with device id %s relay_no %s",
+                                        switch["name"]+" "+relay, switch["_id"], str(index))
 
-                    list.append(TinxySwitch(api_key,
-                                            switch["_id"], switch["name"]+" "+relay, str(index+1), switch['deviceTypes'][index], device))
+                        list.append(TinxySwitch(api_key,
+                                                switch["_id"], switch["name"]+" "+relay, str(index+1), switch['deviceTypes'][index], device))
         return list
 
     except requests.ConnectionError as e:
