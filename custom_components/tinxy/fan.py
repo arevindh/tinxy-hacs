@@ -5,7 +5,7 @@ from homeassistant.components.fan import FanEntity
 from homeassistant.components.fan import PLATFORM_SCHEMA
 from homeassistant.util.percentage import ordered_list_item_to_percentage, percentage_to_ordered_list_item
 
-from homeassistant.components.fan import FanEntity, SUPPORT_SET_SPEED,  SPEED_LOW, SPEED_MEDIUM, SPEED_HIGH, SPEED_OFF
+from homeassistant.components.fan import FanEntity, SUPPORT_SET_SPEED
 
 from datetime import timedelta, datetime
 
