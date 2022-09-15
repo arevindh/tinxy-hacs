@@ -4,7 +4,7 @@
   "documentation": "https://github.com/arevindh/tinxy-hass",
   "dependencies": [],
   "after_dependencies": [
-    "http"
+    "http","tinxy"
   ],
   "codeowners": [
     "@arevindh"
