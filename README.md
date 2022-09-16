@@ -5,6 +5,12 @@ Can be used for the smart switches from [Tinxy.in](https://tinxy.in/)
 
 # Usage 
 
+
+Install HACS
+
+https://hacs.xyz/
+
+
 Add repository to hacs 
 
 ```
