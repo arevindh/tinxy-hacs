@@ -121,7 +121,7 @@ class TinxyCloud:
                 devices.append({
                     'id': data['_id']+'-'+str(id+1),
                     'device_id': data['_id'],
-                    "name": nodes,
+                    "name": data['name']+' '+nodes,
                     'relay_no': id+1,
                     'gtype': data['typeId']['gtype'],
                     'traits': data['typeId']['traits'],
