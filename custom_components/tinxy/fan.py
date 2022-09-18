@@ -57,6 +57,10 @@ class TinxyFan(FanEntity):
         self._current_speed = 0
 
     @property
+    def device_info(self):
+        return self.t_device['device']
+        
+    @property
     def available(self):
         return self.is_available
 
