@@ -15,26 +15,27 @@ class TinxyCloud:
         'EVA_HUB'
     ]
     enabled_list = [
-        'WIFI_3SWITCH_1FAN',
-        'WIRED_DOOR_LOCK',
-        'WIFI_4SWITCH',
-        'WIFI_SWITCH',
-        'WIRED_DOOR_LOCK_V2',
-        'WIFI_4DIMMER',
-        'Fan',
-        'Dimmable Light'
-        'WIFI_SWITCH_V2',
-        'WIFI_4SWITCH_V2',
-        'WIFI_2SWITCH_V1',
-        'WIFI_6SWITCH_V1',
-        'WIFI_BULB_WHITE_V1',
-        'EVA_BULB',
+        "WIFI_3SWITCH_1FAN",
+        "WIRED_DOOR_LOCK",
+        "WIFI_4SWITCH",
+        "WIFI_SWITCH",
+        "WIRED_DOOR_LOCK_V2",
+        "WIFI_4DIMMER",
+        "Fan",
+        "Dimmable Light",
+        "WIFI_SWITCH_V2",
+        "WIFI_4SWITCH_V2",
+        "WIFI_2SWITCH_V1",
+        "WIFI_6SWITCH_V1",
+        "WIFI_BULB_WHITE_V1",
+        "EVA_BULB",
     ]
 
     gtype_light = ['action.devices.types.LIGHT']
     gtype_switch = ['action.devices.types.SWITCH']
     gtype_lock = ['action.devices.types.LOCK']
     typeId_fan = ['WIFI_3SWITCH_1FAN', 'Fan']
+    DOMAIN = "tinxy"
 
     def __init__(self, token):
         self.token = token
@@ -95,12 +96,26 @@ class TinxyCloud:
         return await self.tinxy_request(
             'v2/devices/'+id+'/toggle', payload=payload, method="POST")
 
+    def get_device_info(self, device):
+        return {
+            "identifiers": {
+                # Serial numbers are unique identifiers within a specific domain
+                (self.DOMAIN, device['_id'])
+            },
+            "name": device['name'],
+            "manufacturer": "Tinxy.in",
+            "model": device['typeId']['long_name'],
+            "sw_version": device['firmwareVersion'],
+            # "via_device": (hue.DOMAIN, self.api.bridgeid),
+        }
+
     def parse_device(self, data):
         devices = []
 
         # Handle single item devices
         if not data['devices']:
-            if data['typeId']['name'] in self.enabled_list:
+            # Handle eva EVA_BULB
+            if data['typeId']['name'] in self.enabled_list and data['typeId']['name'] == 'EVA_BULB':
                 device_type = 'Light' if data['typeId']['name'] == 'EVA_BULB' else 'Switch'
                 devices.append({
                     'id': data['_id']+'-1',
@@ -114,7 +129,29 @@ class TinxyCloud:
                     'device_desc': data['typeId']['long_name'],
                     'tinxy_type': data['typeId']['name'],
                     'icon': self.icon_generate(data['typeId']['name']),
+                    'device': self.get_device_info(data)
                 })
+            # Handle single node devices
+            elif data['typeId']['name'] in self.enabled_list:
+                device_type = 'Switch' if data['switchType'] == 'SWITCH' else 'Switch'
+                devices.append({
+                    'id': data['_id'],
+                    'device_id': data['_id'],
+                    "name": data['name'],
+                    'relay_no': 1,
+                    'gtype': data['typeId']['gtype'],
+                    'traits': data['typeId']['traits'],
+                    'device_type': device_type,
+                    'user_device_type': device_type,
+                    'device_desc': data['typeId']['long_name'],
+                    'tinxy_type': data['typeId']['name'],
+                    'icon': self.icon_generate(data['typeId']['name']),
+                    'device': self.get_device_info(data)
+                })
+            else:
+                pass
+                # print('unknown  ='+data['typeId']['name'])
+                # print(self.enabled_list)
         # Handle multinode_devices
         elif data['typeId']['name'] in self.enabled_list:
             for id, nodes in enumerate(data['devices']):
@@ -130,10 +167,11 @@ class TinxyCloud:
                     'device_desc': data['typeId']['long_name'],
                     'tinxy_type': data['typeId']['name'],
                     'icon': self.icon_generate(data['deviceTypes'][id]),
+                    'device': self.get_device_info(data)
                 })
         else:
             print('unknown  ='+data['typeId']['name'])
-            print(self.enabled_list)
+            # print(self.enabled_list)
         return devices
 
     def get_device_type(self, tinxy_type, id):

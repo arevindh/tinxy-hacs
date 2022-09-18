@@ -60,6 +60,10 @@ class TinxyLight(LightEntity):
         return self._brightness
 
     @property
+    def device_info(self):
+        return self.t_device['device']
+
+    @property
     def supported_color_modes(self):
         return [COLOR_MODE_ONOFF, COLOR_MODE_BRIGHTNESS]
 

@@ -61,6 +61,9 @@ class TinxySwitch(SwitchEntity):
     def available(self):
         return self.is_available
 
+    @property
+    def device_info(self):
+        return self.t_device['device']
 
     @property
     def unique_id(self):
