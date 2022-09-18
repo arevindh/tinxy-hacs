@@ -32,6 +32,10 @@ fan:
   - platform: tinxy
     api_key : 12345678901234567890
     scan_interval: 10
+light:
+  - platform: tinxy
+    api_key : 12345678901234567890
+    scan_interval: 10
 ```
 
 Restart Home Assistant

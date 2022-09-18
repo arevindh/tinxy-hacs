@@ -1,34 +1,24 @@
 from __future__ import annotations
 import voluptuous as vol
-
-from homeassistant.components.sensor import SensorEntity
-from homeassistant.components.switch import SwitchEntity
-from homeassistant.components.switch import PLATFORM_SCHEMA
-
-from datetime import timedelta, datetime
-
-from homeassistant.const import TEMP_CELSIUS
-from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
-from homeassistant.util import Throttle
+from typing import Any, Callable, Dict, Optional
 import requests
 import json
-import homeassistant.helpers.config_validation as cv
 import logging
+from .tinxycloud import TinxyCloud
 
-from homeassistant import config_entries
-# from .const import DOMAIN
-# _LOGGER = logging.getLogger(__name__)
+from homeassistant.components.switch import SwitchEntity
+from homeassistant.components.switch import PLATFORM_SCHEMA
+from homeassistant.helpers.typing import (
+    ConfigType,
+    DiscoveryInfoType,
+    HomeAssistantType,
+)
+import homeassistant.helpers.config_validation as cv
 
 
-BASE_URL = "https://backend.tinxy.in/"
-MIN_TIME_BETWEEN_UPDATES = timedelta(seconds=10)
+from .const import DOMAIN, MIN_TIME_BETWEEN_UPDATES, CONF_API_KEY
 
-SWITCH_PREFIX = 'Tinxy '
-CONF_API_KEY = "api_key"
-
-DOMAIN = "tinxy"
+_LOGGER = logging.getLogger(__name__)
 
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
     {
@@ -37,134 +27,53 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
 )
 
 
-def setup_platform(
-    hass: HomeAssistant,
+async def async_setup_platform(
+    hass: HomeAssistantType,
     config: ConfigType,
-    add_entities: AddEntitiesCallback,
-    discovery_info: DiscoveryInfoType | None = None
+    async_add_entities: Callable,
+    discovery_info: Optional[DiscoveryInfoType] = None,
 ) -> None:
     """Set up the sensor platform."""
-    # add_entities([TinxySwitch()])
+    switches = []
     api_key = config.get(CONF_API_KEY)
-    entities = read_devices(api_key)
-    add_entities(entities)
+    # switches = await hass.async_add_executor_job(sync_devices(api_key))
+    async_add_entities(switches, update_before_add=True)
+    hub = TinxyCloud(api_key)
+    await hub.sync_devices()
+    th_devices = hub.list_switches()
+    # _LOGGER.error(json.dumps(th_devices))
+    for th_device in th_devices:
+        switches.append(TinxySwitch(hub, th_device))
 
-
-_LOGGER = logging.getLogger(__name__)
-
-
-def read_devices(api_key):
-    list = []
-    try:
-        url = BASE_URL+"v2/devices/"
-        headers = {"Authorization": "Bearer "+api_key}
-        response = requests.request("GET", url, data="", headers=headers)
-        jdata = json.loads(response.text)
-        traitList = [['action.devices.traits.OnOff']]
-        switches = [d for d in jdata if d['typeId']['traits'] in traitList]
-
-        for switch in switches:
-            device = {
-                "identifiers": {
-                    (DOMAIN, switch["_id"])
-                },
-                "name": switch["name"],
-                "manufacturer": "Tinxy",
-                "model": switch['typeId']['name'],
-                "sw_version": switch['firmwareVersion']
-            }
-            if switch['typeId']['numberOfRelays'] == 1:
-                list.append(TinxySwitch(api_key,
-                                        switch["_id"], switch["name"], "1", "Switch", device))
-            else:
-                for index, relay in enumerate(switch['devices']):
-                    if switch["typeId"]["name"] == "WIFI_3SWITCH_1FAN" and index == 0:
-                        """ This is a FAN , will be controlled by another file"""
-                        pass
-                    else:
-                        _LOGGER.warning("add %s with device id %s relay_no %s",
-                                        switch["name"]+" "+relay, switch["_id"], str(index))
-
-                        list.append(TinxySwitch(api_key,
-                                                switch["_id"], switch["name"]+" "+relay, str(index+1), switch['deviceTypes'][index], device))
-        return list
-
-    except requests.ConnectionError as e:
-        print("OOPS!! Connection Error. Make sure you are connected to Internet. Technical Details given below.\n")
-        print(str(e))
-    except requests.Timeout as e:
-        print("OOPS!! Timeout Error")
-        print(str(e))
-    except requests.RequestException as e:
-        print("OOPS!! General Error")
-        print(str(e))
-    except KeyboardInterrupt:
-        print("Someone closed the program")
-
-
-class TinxyData(object):
-    def __init__(self, api_key, device_id, relay_no=1):
-        pass
-
-    def update():
-        pass
+    async_add_entities(switches, update_before_add=True)
+    return switches
 
 
 class TinxySwitch(SwitchEntity):
-
-    def __init__(self, api_key, device_id, device_name, relay_no, device_type, device_info):
+    def __init__(self, hub, t_device) -> None:
+        super().__init__()
         self.is_available = True
-        self.device_name = device_name
-        self.relay_no = relay_no
-        self.device_id = device_id
-        self.type = device_type
         self._is_on = False
-        self.d_device_info = device_info
-        self.url = BASE_URL+"v2/devices/"+self.device_id+"/toggle"
-        self.token = "Bearer "+api_key
-        self.read_status()
-
-    @property
-    def device_info(self):
-        return self.d_device_info
+        self.hub = hub
+        self.t_device = t_device
 
     @property
     def available(self):
         return self.is_available
 
+
     @property
     def unique_id(self):
-        return self.device_id+'-'+self.relay_no
-
-    def update(self):
-        # self._is_on = not self._is_on
-        self.read_status()
+        return self.t_device['id']
 
     @property
-    def icon(self) -> str | None:
-        """Icon of the entity."""
-
-        if self.type == "Heater":
-            return "mdi:radiator"
-        elif self.type == "Tubelight":
-            return "mdi:lightbulb-fluorescent-tube"
-        elif self.type == "LED Bulb" or self.type == "Dimmable Light" or self.type == "LED Dimmable Bulb":
-            return "mdi:lightbulb"
-        elif self.type == "Music System":
-            return "mdi:music"
-        elif self.type == "Fan":
-            return "mdi:fan"
-        elif self.type == "Socket":
-            return "mdi:power-socket-eu"
-        elif self.type == "TV":
-            return "mdi:television"
-        else:
-            return "mdi:toggle-switch"
+    def icon(self):
+        return self.t_device['icon']
 
     @property
     def name(self):
         """Name of the entity."""
-        return self.device_name
+        return self.t_device['name']
 
     @property
     def should_poll(self):
@@ -176,65 +85,27 @@ class TinxySwitch(SwitchEntity):
         # self.read_status()
         return self._is_on
 
-    def turn_on(self, **kwargs):
+    async def async_turn_on(self, **kwargs):
         """Turn the switch on."""
-        self._is_on = True
-        self.switch_api()
+        # self._is_on = True
+        await self.hub.set_device_state(
+            self.t_device['device_id'], str(self.t_device['relay_no']), 1)
+        await self.async_update()
 
-    def turn_off(self, **kwargs):
+    async def async_turn_off(self, **kwargs):
         """Turn the switch off."""
-        self._is_on = False
-        self.switch_api()
+        # self._is_on = False
+        await self.hub.set_device_state(
+            self.t_device['device_id'], str(self.t_device['relay_no']), 0)
+        await self.async_update()
 
-    def read_status(self):
-
-        # _LOGGER.warning("read_status called device_id %s relay_no %s",
-        #                 self.device_id, self.relay_no)
-        headers = {
-            "Content-Type": "application/json",
-            "Authorization": self.token
-        }
-        try:
-            response = requests.request(
-                "GET", BASE_URL+"v2/devices/"+self.device_id+"/state?deviceNumber="+self.relay_no, data="", headers=headers)
-            data = response.json()
-
-            if data["status"] and data["status"] == 1:
-                self.is_available = True
-            else:
-                self.is_available = False
-
-            if data["state"] and data["state"] == "ON":
-                self._is_on = True
-            elif data["state"] and data["state"] == "OFF":
-                self._is_on = False
-            _LOGGER.warning("read_status called device_id %s relay_no %s response state %s and status %s",
-                            self.device_id, self.relay_no, data["state"], data["status"])
-        except Exception as e:
+    async def async_update(self, **kwargs):
+        resp = await self.hub.get_device_state(self.t_device['device_id'], str(self.t_device['relay_no']))
+        if resp['state'] == "ON":
+            self._is_on = True
+        else:
+            self._is_on = False
+        if resp['status'] == 1:
+            self.is_available = True
+        else:
             self.is_available = False
-            _LOGGER.error("read_status exception")
-
-    def switch_api(self):
-        """ Switch Device on and off"""
-        _LOGGER.warning("switch_api called device_id %s relay_no %s",
-                        self.device_id, int(self.relay_no)+1)
-        try:
-            payload = {
-                "request": {
-                    "state": 1 if self._is_on == True else 0
-                },
-                "deviceNumber": int(self.relay_no)
-            }
-
-            headers = {
-                "Content-Type": "application/json",
-                "Authorization": self.token
-            }
-
-            response = requests.request(
-                "POST", self.url, data=json.dumps(payload), headers=headers)
-
-            # _LOGGER.warning("switch_api result",response.text)
-        except Exception as e:
-            self.is_available = False
-            _LOGGER.error("Exception on switch_api")
