@@ -46,7 +46,7 @@ class TinxyCloud:
             "Authorization": "Bearer "+self.token
         }
         if payload:
-            payload['source'] = "API"
+            payload['source'] = "Home Assistant"
 
         print(payload)
         async with aiohttp.ClientSession() as session:
