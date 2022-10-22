@@ -1,9 +1,7 @@
 openapi: 3.0.1
 info:
   title: Tinxy API Documentation
-  description: >
-    ## Documentation by by https://github.com/arevindh/tinxy-hacs 
-    
+  description: >    
     ### Steps
     
       1. Install the Tinxy Mobile application
