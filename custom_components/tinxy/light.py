@@ -5,7 +5,6 @@ import voluptuous as vol
 
 import homeassistant.helpers.config_validation as cv
 from bisect import bisect_right
-from types import NoneType
 from typing import Any, Callable, Dict, Optional
 from .tinxycloud import TinxyCloud
 from homeassistant.components.light import LightEntity, ColorMode, ATTR_BRIGHTNESS, COLOR_MODE_ONOFF, COLOR_MODE_BRIGHTNESS
@@ -128,5 +127,5 @@ class TinxyLight(LightEntity):
         else:
             self.is_available = False
 
-        if resp['brightness'] != NoneType:
+        if resp['brightness'] != None:
             self._brightness = math.floor((resp['brightness']/100)*255)

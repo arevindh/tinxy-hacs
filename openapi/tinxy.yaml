@@ -1,0 +1,250 @@
+openapi: 3.0.1
+info:
+  title: Tinxy API Documentation
+  description: >
+    ## Documentation by by https://github.com/arevindh/tinxy-hacs 
+    
+    ### Steps
+    
+      1. Install the Tinxy Mobile application
+
+      2. Login to application
+
+      3. Click on the setting icon (top left on android)
+
+      4. Click on API Token
+
+      5. Click on Get to token 
+
+      6. Copy and save toke for usage in api
+    
+    ## Notes
+    
+    Token should be sent via `Authorization: Bearer <token here>` header 
+    
+  version: '0.1'
+servers:
+  - url: https://backend.tinxy.in
+
+security:
+  - bearerAuth: []
+
+paths:
+  /v2/devices/{deviceId}/toggle:
+    post:
+      parameters:
+        - in: path
+          name: deviceId
+          schema:
+            $ref: "#/components/schemas/DeviceNumber"
+          required: true
+          description: Device Number
+      requestBody:
+        description: Optional description in *Markdown*
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Toggle'
+      description: Set device state
+      responses:
+        '200':
+          content:
+            text/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DeviceState"
+          description: Retrived status of given device
+  /v2/devices/{deviceId}/state:
+    get:
+      parameters:
+        - in: path
+          name: deviceId
+          schema:
+            $ref: "#/components/schemas/DeviceNumber"
+          required: true
+          description: Device Number
+        - in: query
+          name: deviceNumber
+          schema:
+            type: string
+          required: true
+          description: > 
+                  Device Number. 
+                  You can get the device number from the `devices` section start from 1 for each item.
+      description: Get device state
+      responses:
+        '200':
+          content:
+            text/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DeviceState"
+          description: Retrived status of given device
+  /v2/devices/:
+    get:
+      description: Get all devices connected top your account
+      responses:
+        '200':
+          content:
+            text/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Device"
+          description: Lists all devices connected top your account
+components:
+  securitySchemes:
+    bearerAuth:            # arbitrary name for the security scheme
+      type: http
+      scheme: bearer
+  schemas:
+    Device:
+      type: object
+      properties:
+        _id:
+          type: integer
+          format: int64
+        hubId:
+          type: string
+          example: "asdasd12312jkh31kj23hkl12"
+          description: "Only for devices with hub"
+        userId:
+          type: string
+          example: "asdasd12312jkh31kj23hkl12"
+          description: "Id of the user who owns the device"
+        enabled:
+          type: boolean
+        devices:
+          type: array
+          items:
+              type: string
+              example: "Exhaust Fan"
+        deviceTypes:
+          type: array
+          items:
+              type: string
+              example: "Fan"
+        switchType:
+          type: string
+          example: "SWITCH"
+        name:
+          type: string
+          description: "The Name we set in App"
+        toggleDelay:
+          type: integer
+          example: 250
+          description: "Toggle dealy in ms"
+        mqttPassword:
+          type: string
+        typeId:
+          $ref: "#/components/schemas/TypeId"
+        registrationDate:
+          type: string
+        firmwareVersion:
+          type: integer
+          example: 49
+        pairingCode:
+          type: integer
+          example: 12345678
+
+    DeviceState:
+      type: object
+      properties:
+        state: 
+          type: string
+          description: "Device state ON / OFF"
+        brightness:
+          $ref: "#/components/schemas/Brightness"
+        status:
+          type: integer
+          description: "1 - Online 0 - Offline"
+      
+    TypeId:
+      type: object
+      properties:
+        _id:
+          type: string
+        primary:
+          type: boolean
+        numberOfRelays:
+          type: integer
+        name:
+          type: string
+        __v:
+          type: integer
+        gtype:
+          type: string
+        traits:
+          type: array
+          items:
+              type: string
+              example: "action.devices.traits.OnOff"
+        long_name:
+          type: string
+          example: "2 Node Smart Switch"
+        amazonReviewLink:
+          type: string
+          example: "https://www.amazon.in/review/create-review/?asin=B08QF5WVN2"
+        features:
+          type: array
+          items:
+              type: string
+              example: "SWITCH"
+        toggleDelay:
+          type: integer
+          example: 0
+          description: "Toggle dealy in ms"
+        uuidRef: 
+          type: object
+        rfCode:
+          type: integer
+        remoteCodes:
+          type: array
+          items:
+            type: object
+
+    Toggle:
+      type: object
+      properties:
+        request:
+          type: object
+          properties:
+            state: 
+              type: integer
+              description: "Device state 1 - ON / 0 - OFF"
+              example: 1
+            brightness: 
+              type: integer
+              description: "Only for lights and fans 0-100 [ for fans value is 33, 66 and 100 only ]"
+              example: 33
+        deviceNumber:
+          $ref: "#/components/schemas/DeviceNumber"
+    ToggleResponse:
+      type: object
+      properties:
+        state: 
+          type: integer
+          description: "Device state 1 - ON / 0 - OFF"
+          example: 1
+        brightness:
+          $ref: "#/components/schemas/Brightness"
+          
+    Brightness:
+      type: integer
+      maximum: 100
+      minimum: 0
+      description: "Only for lights and fans 0-100 [ for fans value is 33, 66 and 100 only ]"
+
+    DeviceId:
+      type: string
+      description: "Device Id, from `_id` attribute "
+      
+    DeviceNumber:
+      type: integer
+      description: "Device Number. You can get the device number from the `devices` section start from 1 for each item"
+      example: 1
+
+        
