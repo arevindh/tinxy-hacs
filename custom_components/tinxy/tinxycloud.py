@@ -146,7 +146,7 @@ class TinxyCloud:
                     'user_device_type': device_type,
                     'device_desc': data['typeId']['long_name'],
                     'tinxy_type': data['typeId']['name'],
-                    'icon': self.icon_generate(data['typeId']['name']),
+                    'icon': self.icon_generate(device_type),
                     'device': self.get_device_info(data)
                 })
             else:
