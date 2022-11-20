@@ -29,12 +29,13 @@ class TinxyCloud:
         "WIFI_6SWITCH_V1",
         "WIFI_BULB_WHITE_V1",
         "EVA_BULB",
+        "WIFI_SWITCH_1FAN_V1"
     ]
 
     gtype_light = ['action.devices.types.LIGHT']
     gtype_switch = ['action.devices.types.SWITCH']
     gtype_lock = ['action.devices.types.LOCK']
-    typeId_fan = ['WIFI_3SWITCH_1FAN', 'Fan']
+    typeId_fan = ['WIFI_3SWITCH_1FAN', 'Fan','WIFI_SWITCH_1FAN_V1']
     DOMAIN = "tinxy"
 
     def __init__(self, token):
@@ -133,7 +134,7 @@ class TinxyCloud:
                 })
             # Handle single node devices
             elif data['typeId']['name'] in self.enabled_list:
-                device_type = 'Switch' if data['switchType'] == 'SWITCH' else 'Switch'
+                device_type = self.get_device_type(data['typeId']['name'], 0)
                 devices.append({
                     'id': data['_id'],
                     'device_id': data['_id'],
@@ -145,7 +146,7 @@ class TinxyCloud:
                     'user_device_type': device_type,
                     'device_desc': data['typeId']['long_name'],
                     'tinxy_type': data['typeId']['name'],
-                    'icon': self.icon_generate(data['typeId']['name']),
+                    'icon': self.icon_generate(device_type),
                     'device': self.get_device_info(data)
                 })
             else:
