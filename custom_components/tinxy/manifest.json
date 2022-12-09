@@ -2,14 +2,14 @@
   "domain": "tinxy",
   "name": "Tinxy",
   "documentation": "https://github.com/arevindh/tinxy-hass",
-  "dependencies": [],
+  "dependencies": ["network"],
   "after_dependencies": [
     "http"
   ],
   "codeowners": [
     "@arevindh"
   ],
-  "requirements": ["aiohttp==3.8.1"],
+  "requirements": [],
   "config_flow": false,
   "iot_class": "cloud_polling",
   "version": "2.0.0",
