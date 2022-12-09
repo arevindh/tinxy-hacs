@@ -2,7 +2,7 @@
   "domain": "tinxy",
   "name": "Tinxy",
   "documentation": "https://github.com/arevindh/tinxy-hass",
-  "dependencies": [],
+  "dependencies": ["network],
   "after_dependencies": [
     "http"
   ],
