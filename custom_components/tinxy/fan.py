@@ -21,6 +21,8 @@ from .const import DOMAIN, MIN_TIME_BETWEEN_UPDATES, CONF_API_KEY
 SPEED_RANGE = (1, 100)
 _LOGGER = logging.getLogger(__name__)
 
+SCAN_INTERVAL = MIN_TIME_BETWEEN_UPDATES
+
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
     {
         vol.Required(CONF_API_KEY): cv.string

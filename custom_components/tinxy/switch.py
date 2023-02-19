@@ -18,6 +18,8 @@ import homeassistant.helpers.config_validation as cv
 
 from .const import DOMAIN, MIN_TIME_BETWEEN_UPDATES, CONF_API_KEY
 
+SCAN_INTERVAL = MIN_TIME_BETWEEN_UPDATES
+
 _LOGGER = logging.getLogger(__name__)
 
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
