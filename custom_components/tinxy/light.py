@@ -1,132 +1,159 @@
-from __future__ import annotations
+"""Example integration using DataUpdateCoordinator."""
 import logging
+from typing import Any
 import math
-import voluptuous as vol
 
-import homeassistant.helpers.config_validation as cv
-from bisect import bisect_right
-from types import NoneType
-from typing import Any, Callable, Dict, Optional
-from .tinxycloud import TinxyCloud
-from homeassistant.components.light import LightEntity, ColorMode, ATTR_BRIGHTNESS, COLOR_MODE_ONOFF, COLOR_MODE_BRIGHTNESS
-from homeassistant.components.light import PLATFORM_SCHEMA
-from homeassistant.helpers.typing import (
-    ConfigType,
-    DiscoveryInfoType,
-    HomeAssistantType,
+from homeassistant.components.light import LightEntity
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from homeassistant.components.light import (
+    LightEntity,
+    ColorMode,
+    ATTR_BRIGHTNESS,
+    COLOR_MODE_ONOFF,
+    COLOR_MODE_BRIGHTNESS,
 )
 
-from .const import DOMAIN, MIN_TIME_BETWEEN_UPDATES, CONF_API_KEY
+from .const import DOMAIN
+from .coordinator import TinxyUpdateCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
-PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
-    {
-        vol.Required(CONF_API_KEY): cv.string
-    }
-)
 
-
-async def async_setup_platform(
-    hass: HomeAssistantType,
-    config: ConfigType,
-    async_add_entities: Callable,
-    discovery_info: Optional[DiscoveryInfoType] = None,
+async def async_setup_entry(
+    hass: HomeAssistant, entry: ConfigEntry, async_add_entities
 ) -> None:
-    """Set up the sensor platform."""
-    lights = []
-    api_key = config.get(CONF_API_KEY)
-    hub = TinxyCloud(api_key)
-    await hub.sync_devices()
-    th_devices = hub.list_lights()
-    # _LOGGER.error(json.dumps(th_devices))
-    for th_device in th_devices:
-        lights.append(TinxyLight(hub, th_device))
-    async_add_entities(lights, update_before_add=True)
-    return lights
+    """Config entry example."""
+    # assuming API object stored here by __init__.py
+    apidata, coordinator = hass.data[DOMAIN][entry.entry_id]
+
+    apidata.list_switches()
+
+    # _LOGGER.error(apidata)
+
+    # Fetch initial data so we have data when entities subscribe
+    #
+    # If the refresh fails, async_config_entry_first_refresh will
+    # raise ConfigEntryNotReady and setup will try again later
+    #
+    # If you do not want to retry setup on failure, use
+    # coordinator.async_refresh() instead
+    #
+    await coordinator.async_config_entry_first_refresh()
+    switches = []
+
+    status_list = {}
+
+    all_devices = apidata.list_lights()
+    result = await apidata.get_all_status()
+
+    for device in all_devices:
+        if device["id"] in result:
+            status_list[device["id"]] = device | result[device["id"]]
+
+    for th_device in status_list:
+        switches.append(TinxyLight(coordinator, apidata, th_device))
+
+    async_add_entities(switches)
 
 
-class TinxyLight(LightEntity):
-    def __init__(self, hub, t_device) -> None:
-        super().__init__()
-        self.is_available = True
-        self._is_on = False
-        self.hub = hub
-        self.t_device = t_device
-        self._brightness = 0
+class TinxyLight(CoordinatorEntity, LightEntity):
+    """An entity using CoordinatorEntity.
+
+    The CoordinatorEntity class provides:
+      should_poll
+      async_update
+      async_added_to_hass
+      available
+
+    """
+
+    def __init__(self, coordinator, apidata, idx) -> None:
+        """Pass coordinator to CoordinatorEntity."""
+        super().__init__(coordinator, context=idx)
+        self.idx = idx
+        self.coordinator = coordinator
+        self.api = apidata
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        """Handle updated data from the coordinator."""
+        self._attr_is_on = self.coordinator.data[self.idx]["state"]
+        self.async_write_ha_state()
 
     @property
-    def brightness(self):
-        return self._brightness
+    def unique_id(self) -> str:
+        """dasdasdasd."""
+        return self.coordinator.data[self.idx]["id"]
+
+    @property
+    def icon(self) -> str:
+        """Icon for entity."""
+        return self.coordinator.data[self.idx]["icon"]
+
+    @property
+    def name(self) -> str:
+        """Name of the entity."""
+        return self.coordinator.data[self.idx]["name"]
+
+    @property
+    def is_on(self) -> bool:
+        """If the switch is currently on or off."""
+        # self.read_status()
+        return self.coordinator.data[self.idx]["state"]
+        # return False
+
+    @property
+    def available(self) -> bool:
+        """Device available status."""
+        return True if self.coordinator.data[self.idx]["status"] == 1 else False
 
     @property
     def device_info(self):
-        return self.t_device['device']
+        return self.coordinator.data[self.idx]["device"]
 
     @property
-    def supported_color_modes(self):
+    def brightness(self):
+        if "brightness" in self.coordinator.data[self.idx]:
+            return math.floor(
+                (self.coordinator.data[self.idx]["brightness"] / 100) * 255
+            )
+        else:
+            return 0
+
+    @property
+    def supported_color_modes(self) -> list[str]:
+        """Support color modes"""
         return [COLOR_MODE_ONOFF, COLOR_MODE_BRIGHTNESS]
 
     @property
-    def color_mode(self):
+    def color_mode(self) -> str:
         return ColorMode.BRIGHTNESS
 
-    @property
-    def available(self):
-        return self.is_available
-
-    @property
-    def unique_id(self):
-        return self.t_device['id']
-
-    @property
-    def icon(self):
-        return self.t_device['icon']
-
-    @property
-    def name(self):
-        """Name of the entity."""
-        return self.t_device['name']
-
-    @property
-    def should_poll(self):
-        """should poll"""
-        return True
-
-    @property
-    def is_on(self):
-        """If the switch is currently on or off."""
-        # self.read_status()
-        return self._is_on
-
-    async def async_turn_on(self, **kwargs):
+    async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn the switch on."""
         real_brightness = None
+        _LOGGER.warning(kwargs)
         if ATTR_BRIGHTNESS in kwargs:
             brightness = int(kwargs[ATTR_BRIGHTNESS])
-            real_brightness = math.floor((brightness/255)*100)            
-        await self.hub.set_device_state(
-            self.t_device['device_id'], str(self.t_device['relay_no']), 1, real_brightness)
-        await self.async_update()
+            real_brightness = math.floor((brightness / 255) * 100)
+        # self._is_on = True
+        await self.api.set_device_state(
+            self.coordinator.data[self.idx]["device_id"],
+            str(self.coordinator.data[self.idx]["relay_no"]),
+            1,
+            real_brightness,
+        )
 
-    async def async_turn_off(self, **kwargs):
+        # await self.coordinator.async_request_refresh()
+
+    async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn the switch off."""
         # self._is_on = False
-        await self.hub.set_device_state(
-            self.t_device['device_id'], str(self.t_device['relay_no']), 0)
-        await self.async_update()
-
-    async def async_update(self, **kwargs):
-        """Update states via poll"""
-        resp = await self.hub.get_device_state(self.t_device['device_id'], str(self.t_device['relay_no']))
-        if resp['state'] == "ON":
-            self._is_on = True
-        else:
-            self._is_on = False
-        if resp['status'] == 1:
-            self.is_available = True
-        else:
-            self.is_available = False
-
-        if resp['brightness'] != NoneType:
-            self._brightness = math.floor((resp['brightness']/100)*255)
+        await self.api.set_device_state(
+            self.coordinator.data[self.idx]["device_id"],
+            str(self.coordinator.data[self.idx]["relay_no"]),
+            0,
+        )
+        # await self.coordinator.async_request_refresh()
