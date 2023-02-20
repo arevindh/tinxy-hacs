@@ -30,7 +30,7 @@ class TinxyUpdateCoordinator(DataUpdateCoordinator):
             # Name of the data. For logging purposes.
             name="Tinxy",
             # Polling interval. Will only be polled if there are subscribers.
-            update_interval=timedelta(seconds=5),
+            update_interval=timedelta(seconds=7),
             request_refresh_debouncer=Debouncer(
                 hass, _LOGGER, cooldown=REQUEST_REFRESH_DELAY, immediate=False
             ),

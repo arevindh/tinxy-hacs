@@ -23,23 +23,20 @@ Restart Home Assistant
 
 Get the api key from application 
 
-```
-switch:
-  - platform: tinxy
-    api_key : 12345678901234567890
-    scan_interval: 10
-fan:
-  - platform: tinxy
-    api_key : 12345678901234567890
-    scan_interval: 10
-light:
-  - platform: tinxy
-    api_key : 12345678901234567890
-    scan_interval: 10
-```
+Go to settings -> Integrations 
 
-Restart Home Assistant
+Search Tinxy and click on it 
 
-# Current issues
+![screen-1](https://user-images.githubusercontent.com/693151/220121949-4f48a2ad-bae5-42e9-9167-b6bc8f524251.png)
 
-Due to the reponse delay via they api the toggle will have a delay for approx 3s . Status change can be adjusted using `scan_interval` parameter (better to keep this above `7` to avoid slowing the HA server)
+
+After entring the API Key click sumbit
+
+![screen-2](https://user-images.githubusercontent.com/693151/220121597-624f3abf-2d28-4ca9-8764-0fb9e819e138.png)
+
+
+Click finish on the next screen
+
+
+You can find all device in the integration screen
+
