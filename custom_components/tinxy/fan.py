@@ -118,7 +118,7 @@ class TinxySwitch(CoordinatorEntity, FanEntity):
             str(self.coordinator.data[self.idx]["relay_no"]),
             1,
         )
-        # await self.coordinator.async_request_refresh()
+        await self.coordinator.async_request_refresh()
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn the switch off."""
@@ -128,7 +128,7 @@ class TinxySwitch(CoordinatorEntity, FanEntity):
             str(self.coordinator.data[self.idx]["relay_no"]),
             0,
         )
-        # await self.coordinator.async_request_refresh()
+        await self.coordinator.async_request_refresh()
 
     async def async_set_percentage(self, percentage: int) -> None:
         """Set the speed percentage of the fan."""

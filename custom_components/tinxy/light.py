@@ -146,7 +146,7 @@ class TinxyLight(CoordinatorEntity, LightEntity):
             real_brightness,
         )
 
-        # await self.coordinator.async_request_refresh()
+        await self.coordinator.async_request_refresh()
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn the switch off."""
@@ -156,4 +156,4 @@ class TinxyLight(CoordinatorEntity, LightEntity):
             str(self.coordinator.data[self.idx]["relay_no"]),
             0,
         )
-        # await self.coordinator.async_request_refresh()
+        await self.coordinator.async_request_refresh()
