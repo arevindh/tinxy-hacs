@@ -8,6 +8,7 @@ import async_timeout
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.helpers.debounce import Debouncer
 
 from .tinxycloud import TinxyAuthenticationException, TinxyException
 
@@ -15,6 +16,7 @@ from .tinxycloud import TinxyAuthenticationException, TinxyException
 
 
 _LOGGER = logging.getLogger(__name__)
+REQUEST_REFRESH_DELAY = 0.35
 
 
 class TinxyUpdateCoordinator(DataUpdateCoordinator):
@@ -29,6 +31,9 @@ class TinxyUpdateCoordinator(DataUpdateCoordinator):
             name="Tinxy",
             # Polling interval. Will only be polled if there are subscribers.
             update_interval=timedelta(seconds=5),
+            request_refresh_debouncer=Debouncer(
+                hass, _LOGGER, cooldown=REQUEST_REFRESH_DELAY, immediate=False
+            ),
         )
         # my_api.list_all
         self.hass = hass
