@@ -28,7 +28,7 @@ class TinxyUpdateCoordinator(DataUpdateCoordinator):
             # Name of the data. For logging purposes.
             name="Tinxy",
             # Polling interval. Will only be polled if there are subscribers.
-            update_interval=timedelta(seconds=5),
+            update_interval=timedelta(seconds=10),
         )
         # my_api.list_all
         self.hass = hass
