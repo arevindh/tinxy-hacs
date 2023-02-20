@@ -1,22 +1,20 @@
 {
   "domain": "tinxy",
   "name": "Tinxy",
-  "documentation": "https://github.com/arevindh/tinxy-hass",
-  "dependencies": ["network"],
-  "after_dependencies": [
-    "http"
-  ],
-  "codeowners": [
-    "@arevindh"
-  ],
-  "requirements": [],
-  "config_flow": false,
+  "codeowners": ["@arevindh"],
+  "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://www.home-assistant.io/integrations/tinxy",
+  "homekit": {},
   "iot_class": "cloud_polling",
-  "version": "2.0.0",
+  "requirements": [],
+  "ssdp": [],
+  "version": "3.0.0",
   "zeroconf": [
     {
       "type": "_http._tcp.local.",
       "name": "tinxy*"
     }
   ]
+  
 }

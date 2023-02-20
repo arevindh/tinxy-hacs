@@ -1,114 +1,129 @@
-from __future__ import annotations
-import voluptuous as vol
-from typing import Any, Callable, Dict, Optional
-import requests
-import json
+"""Example integration using DataUpdateCoordinator."""
 import logging
-from .tinxycloud import TinxyCloud
+from typing import Any
 
 from homeassistant.components.switch import SwitchEntity
-from homeassistant.components.switch import PLATFORM_SCHEMA
-from homeassistant.helpers.typing import (
-    ConfigType,
-    DiscoveryInfoType,
-    HomeAssistantType,
-)
-import homeassistant.helpers.config_validation as cv
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-
-from .const import DOMAIN, MIN_TIME_BETWEEN_UPDATES, CONF_API_KEY
+from .const import DOMAIN
+from .coordinator import TinxyUpdateCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
-PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
-    {
-        vol.Required(CONF_API_KEY): cv.string
-    }
-)
 
-
-async def async_setup_platform(
-    hass: HomeAssistantType,
-    config: ConfigType,
-    async_add_entities: Callable,
-    discovery_info: Optional[DiscoveryInfoType] = None,
+async def async_setup_entry(
+    hass: HomeAssistant, entry: ConfigEntry, async_add_entities
 ) -> None:
-    """Set up the sensor platform."""
+    """Config entry example."""
+    # assuming API object stored here by __init__.py
+    apidata, coordinator = hass.data[DOMAIN][entry.entry_id]
+
+    # _LOGGER.error(apidata)
+
+    # Fetch initial data so we have data when entities subscribe
+    #
+    # If the refresh fails, async_config_entry_first_refresh will
+    # raise ConfigEntryNotReady and setup will try again later
+    #
+    # If you do not want to retry setup on failure, use
+    # coordinator.async_refresh() instead
+    #
+    await coordinator.async_config_entry_first_refresh()
     switches = []
-    api_key = config.get(CONF_API_KEY)
-    # switches = await hass.async_add_executor_job(sync_devices(api_key))
-    async_add_entities(switches, update_before_add=True)
-    hub = TinxyCloud(api_key)
-    await hub.sync_devices()
-    th_devices = hub.list_switches()
-    # _LOGGER.error(json.dumps(th_devices))
-    for th_device in th_devices:
-        switches.append(TinxySwitch(hub, th_device))
 
-    async_add_entities(switches, update_before_add=True)
-    return switches
+    status_list = {}
+
+    all_devices = apidata.list_switches()
+    result = await apidata.get_all_status()
+
+    for device in all_devices:
+        if device["id"] in result:
+            status_list[device["id"]] = device | result[device["id"]]
+
+    for th_device in status_list:
+        switches.append(TinxySwitch(coordinator, apidata, th_device))
+
+    async_add_entities(switches)
 
 
-class TinxySwitch(SwitchEntity):
-    def __init__(self, hub, t_device) -> None:
-        super().__init__()
-        self.is_available = True
-        self._is_on = False
-        self.hub = hub
-        self.t_device = t_device
+class TinxySwitch(CoordinatorEntity, SwitchEntity):
+    """An entity using CoordinatorEntity.
+
+    The CoordinatorEntity class provides:
+      should_poll
+      async_update
+      async_added_to_hass
+      available
+
+    """
+
+    def __init__(self, coordinator, apidata, idx) -> None:
+        """Pass coordinator to CoordinatorEntity."""
+        super().__init__(coordinator, context=idx)
+        self.idx = idx
+        self.coordinator = coordinator
+        self.api = apidata
+        # _LOGGER.warning(
+        #     self.coordinator.data[self.idx]["name"]
+        #     + " - "
+        #     + self.coordinator.data[self.idx]["state"]
+        # )
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        """Handle updated data from the coordinator."""
+        self._attr_is_on = self.coordinator.data[self.idx]["state"]
+        self.async_write_ha_state()
 
     @property
-    def available(self):
-        return self.is_available
+    def unique_id(self) -> str:
+        """dasdasdasd."""
+        return self.coordinator.data[self.idx]["id"]
+
+    @property
+    def icon(self) -> str:
+        """Icon for entity."""
+        return self.coordinator.data[self.idx]["icon"]
+
+    @property
+    def name(self) -> str:
+        """Name of the entity."""
+        return self.coordinator.data[self.idx]["name"]
+
+    @property
+    def is_on(self) -> bool:
+        """If the switch is currently on or off."""
+        # self.read_status()
+        return self.coordinator.data[self.idx]["state"]
+        # return False
+
+    @property
+    def available(self) -> bool:
+        """Device available status."""
+        return True if self.coordinator.data[self.idx]["status"] == 1 else False
 
     @property
     def device_info(self):
-        return self.t_device['device']
+        return self.coordinator.data[self.idx]["device"]
 
-    @property
-    def unique_id(self):
-        return self.t_device['id']
-
-    @property
-    def icon(self):
-        return self.t_device['icon']
-
-    @property
-    def name(self):
-        """Name of the entity."""
-        return self.t_device['name']
-
-    @property
-    def should_poll(self):
-        return True
-
-    @property
-    def is_on(self):
-        """If the switch is currently on or off."""
-        # self.read_status()
-        return self._is_on
-
-    async def async_turn_on(self, **kwargs):
+    async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn the switch on."""
         # self._is_on = True
-        await self.hub.set_device_state(
-            self.t_device['device_id'], str(self.t_device['relay_no']), 1)
-        await self.async_update()
+        await self.api.set_device_state(
+            self.coordinator.data[self.idx]["device_id"],
+            str(self.coordinator.data[self.idx]["relay_no"]),
+            1,
+        )
+        await self.coordinator.async_request_refresh()
 
-    async def async_turn_off(self, **kwargs):
+    async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn the switch off."""
         # self._is_on = False
-        await self.hub.set_device_state(
-            self.t_device['device_id'], str(self.t_device['relay_no']), 0)
-        await self.async_update()
-
-    async def async_update(self, **kwargs):
-        resp = await self.hub.get_device_state(self.t_device['device_id'], str(self.t_device['relay_no']))
-        if resp['state'] == "ON":
-            self._is_on = True
-        else:
-            self._is_on = False
-        if resp['status'] == 1:
-            self.is_available = True
-        else:
-            self.is_available = False
+        await self.api.set_device_state(
+            self.coordinator.data[self.idx]["device_id"],
+            str(self.coordinator.data[self.idx]["relay_no"]),
+            0,
+        )
+        await self.coordinator.async_request_refresh()
