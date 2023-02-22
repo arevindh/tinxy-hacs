@@ -4,7 +4,7 @@
   "codeowners": ["@arevindh"],
   "config_flow": true,
   "dependencies": [],
-  "documentation": "https://www.home-assistant.io/integrations/tinxy"
+  "documentation": "https://www.home-assistant.io/integrations/tinxy",
   "issue_tracker": "https://github.com/arevindh/tinxy-hacs/issues",
   "homekit": {},
   "iot_class": "cloud_polling",
