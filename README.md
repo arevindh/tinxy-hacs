@@ -6,18 +6,36 @@ Can be used for the smart switches from [Tinxy.in](https://tinxy.in/)
 # Usage 
 
 
-Install HACS
+## Step 1 . Install HACS
 
-https://hacs.xyz/
+Hacs is a community app store for home assistant.
+
+Getting started with Hacs https://hacs.xyz/docs/setup/prerequisites
+
+## Step 2 Add repository to hacs 
+
+Once you have Hacs installed 
+
+Navigate to hacs -> Integration 
+
+<img src="https://user-images.githubusercontent.com/693151/220521463-ff3b6de5-0abd-4f15-81cb-0a4663e3991a.png" width="400"/>
+
+Click on the 3 dots at right top and select Custom repositories 
+
+<img src="https://user-images.githubusercontent.com/693151/693151/220521867-dbd45e52-2e9a-4426-83d7-cefb2d3f8fd8.png" width="400"/>
+
+Paste `https://github.com/arevindh/tinxy-hac` select Integration and click add 
+
+<img src="https://user-images.githubusercontent.com/693151/220522068-aeb2423a-5d78-4318-a181-1037b2299a7b.png" width="400"/>
+
+Now you can close the `Custom repositories` section .
+
+Click on the Expore & Download button on right bottom 
+
+![image](https://user-images.githubusercontent.com/693151/220522243-48b85c0f-59ff-45f6-b664-37157eb1ec15.png)
 
 
-Add repository to hacs 
-
-```
-https://github.com/arevindh/tinxy-hacs
-```
-
-Install Tinxy Smart Devices from hacs
+Type `Tinxy` , seach and add it 
 
 Restart Home Assistant
 
