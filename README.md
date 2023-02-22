@@ -22,9 +22,9 @@ Navigate to hacs -> Integration
 
 Click on the 3 dots at right top and select Custom repositories 
 
-<img src="https://user-images.githubusercontent.com/693151/220522658-5c196e7e-82d7-422c-9e67-15a5e9c7d139.png" width="400"/>
+<img src="https://user-images.githubusercontent.com/693151/220522658-5c196e7e-82d7-422c-9e67-15a5e9c7d139.png" width="250"/>
 
-Paste `https://github.com/arevindh/tinxy-hac` select Integration and click add 
+Paste `https://github.com/arevindh/tinxy-hacs` select Integration and click add 
 
 <img src="https://user-images.githubusercontent.com/693151/220522068-aeb2423a-5d78-4318-a181-1037b2299a7b.png" width="400"/>
 
