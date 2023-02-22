@@ -83,9 +83,7 @@ class TinxySwitch(CoordinatorEntity, FanEntity):
     @property
     def is_on(self) -> bool:
         """If the switch is currently on or off."""
-        # self.read_status()
         return self.coordinator.data[self.idx]["state"]
-        # return False
 
     @property
     def available(self) -> bool:
@@ -122,7 +120,7 @@ class TinxySwitch(CoordinatorEntity, FanEntity):
             self.coordinator.data[self.idx]["device_id"],
             str(self.coordinator.data[self.idx]["relay_no"]),
             1,
-            self.calculate_percent(self.preset_mode)
+            self.calculate_percent(self.preset_mode),
         )
         await self.coordinator.async_request_refresh()
 
@@ -145,7 +143,7 @@ class TinxySwitch(CoordinatorEntity, FanEntity):
             1,
             self.calculate_percent(preset_mode),
         )
-        await self.coordinator.async_refresh()
+        await self.coordinator.async_request_refresh()
 
     def calculate_percent(self, preset_mode: str) -> int:
         """Calculate percent"""
