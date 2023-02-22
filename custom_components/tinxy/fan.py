@@ -115,6 +115,17 @@ class TinxySwitch(CoordinatorEntity, FanEntity):
             return "Medium"
         return "Low"
 
+    async def async_turn_on(self, **kwargs: Any) -> None:
+        """Turn the switch on."""
+        # self._is_on = True
+        await self.api.set_device_state(
+            self.coordinator.data[self.idx]["device_id"],
+            str(self.coordinator.data[self.idx]["relay_no"]),
+            1,
+            self.calculate_percent(self.preset_mode)
+        )
+        await self.coordinator.async_request_refresh()
+
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn the switch off."""
         # self._is_on = False
@@ -128,17 +139,18 @@ class TinxySwitch(CoordinatorEntity, FanEntity):
     async def async_set_preset_mode(self, preset_mode: str) -> None:
         """Set the preset mode of the fan."""
 
-        if preset_mode == "High":
-            percentage = 100
-        elif preset_mode == "Medium":
-            percentage = 66
-        else:
-            percentage = 33
-
         await self.api.set_device_state(
             self.coordinator.data[self.idx]["device_id"],
             str(self.coordinator.data[self.idx]["relay_no"]),
             1,
-            percentage,
+            self.calculate_percent(preset_mode),
         )
         await self.coordinator.async_refresh()
+
+    def calculate_percent(self, preset_mode: str) -> int:
+        """Calculate percent"""
+        if preset_mode == "High":
+            return 100
+        elif preset_mode == "Medium":
+            return 66
+        return 33
