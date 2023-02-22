@@ -1,15 +1,15 @@
-"""Example integration using DataUpdateCoordinator."""
+"""Tinxy Fan Entity."""
 import logging
-from typing import Any, Optional
+from typing import Any
 
-from homeassistant.components.fan import FanEntity, SUPPORT_SET_SPEED
+from homeassistant.components.fan import (
+    FanEntity,
+    FanEntityFeature,
+)
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
-from homeassistant.util.percentage import (
-    ordered_list_item_to_percentage,
-    percentage_to_ordered_list_item,
-)
+from homeassistant.helpers.entity import DeviceInfo
 
 from .const import DOMAIN
 
@@ -58,11 +58,6 @@ class TinxySwitch(CoordinatorEntity, FanEntity):
         self.idx = idx
         self.coordinator = coordinator
         self.api = apidata
-        # _LOGGER.warning(
-        #     self.coordinator.data[self.idx]["name"]
-        #     + " - "
-        #     + self.coordinator.data[self.idx]["state"]
-        # )
 
     @callback
     def _handle_coordinator_update(self) -> None:
@@ -98,27 +93,27 @@ class TinxySwitch(CoordinatorEntity, FanEntity):
         return True if self.coordinator.data[self.idx]["status"] == 1 else False
 
     @property
-    def device_info(self):
+    def device_info(self) -> DeviceInfo:
         return self.coordinator.data[self.idx]["device"]
 
     @property
-    def supported_features(self):
-        return SUPPORT_SET_SPEED
+    def preset_modes(self) -> list[str] | None:
+        """List all available preset modes"""
+        return ["Low", "Medium", "High"]
 
     @property
-    def percentage(self) -> Optional[int]:
-        """Return the current speed percentage."""
-        return self.coordinator.data[self.idx]["brightness"]
+    def supported_features(self) -> FanEntityFeature:
+        """List all supported features"""
+        return FanEntityFeature.PRESET_MODE
 
-    async def async_turn_on(self, **kwargs: Any) -> None:
-        """Turn the switch on."""
-        # self._is_on = True
-        await self.api.set_device_state(
-            self.coordinator.data[self.idx]["device_id"],
-            str(self.coordinator.data[self.idx]["relay_no"]),
-            1,
-        )
-        await self.coordinator.async_request_refresh()
+    @property
+    def preset_mode(self) -> str | None:
+        """Get current preset mode"""
+        if self.coordinator.data[self.idx]["brightness"] == 100:
+            return "High"
+        elif self.coordinator.data[self.idx]["brightness"] == 66:
+            return "Medium"
+        return "Low"
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn the switch off."""
@@ -130,15 +125,15 @@ class TinxySwitch(CoordinatorEntity, FanEntity):
         )
         await self.coordinator.async_request_refresh()
 
-    async def async_set_percentage(self, percentage: int) -> None:
-        """Set the speed percentage of the fan."""
+    async def async_set_preset_mode(self, preset_mode: str) -> None:
+        """Set the preset mode of the fan."""
 
-        if percentage > 1 and percentage <= 33:
-            percentage = 33
-        elif percentage > 33 and percentage <= 66:
-            percentage = 66
-        elif percentage > 66:
+        if preset_mode == "High":
             percentage = 100
+        elif preset_mode == "Medium":
+            percentage = 66
+        else:
+            percentage = 33
 
         await self.api.set_device_state(
             self.coordinator.data[self.idx]["device_id"],
@@ -146,4 +141,4 @@ class TinxySwitch(CoordinatorEntity, FanEntity):
             1,
             percentage,
         )
-        await self.coordinator.async_request_refresh()
+        await self.coordinator.async_refresh()
