@@ -7,7 +7,7 @@ from typing import Any
 import voluptuous as vol
 
 from homeassistant import config_entries
-from homeassistant.const import CONF_API_KEY
+from homeassistant.const import CONF_API_KEY, CONF_HOST, CONF_NAME
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.exceptions import HomeAssistantError
@@ -34,7 +34,8 @@ class TinxyHub:
     async def authenticate(self, api_key: str, web_session) -> bool:
         """Test if we can authenticate with the host."""
 
-        host_config = TinxyHostConfiguration(api_token=api_key, api_url=self.host)
+        host_config = TinxyHostConfiguration(
+            api_token=api_key, api_url=self.host)
         api = TinxyCloud(host_config=host_config, web_session=web_session)
         await api.sync_devices()
         return True
@@ -93,6 +94,28 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return self.async_show_form(
             step_id="user", data_schema=STEP_USER_DATA_SCHEMA, errors=errors
         )
+
+
+async def async_step_zeroconf(self, zeroconf_info):
+    """Handle zeroconf discovery."""
+    # Extract info from zeroconf_info and make sure it starts with "tinxy"
+    host = zeroconf_info[CONF_HOST]
+    name = zeroconf_info.get(CONF_NAME, "")
+
+    if not name.startswith("tinxy"):
+        return self.async_abort(reason="not_tinxy_device")
+
+    # You can now proceed with creating a config entry or aborting
+    await self.async_set_unique_id(name)
+    self._abort_if_unique_id_configured()
+
+    return self.async_create_entry(
+        title=name,
+        data={
+            "host": host,
+            # Add any other data you might need
+        },
+    )
 
 
 class CannotConnect(HomeAssistantError):

@@ -1,0 +1,19 @@
+{
+    "config": {
+        "abort": {
+            "already_configured": "ഉപകരണം ഇതിനകം ക്രമീകരിച്ചിരിക്കുക"
+        },
+        "error": {
+            "cannot_connect": "ബന്ധപ്പെടാൻ കഴിയില്ല",
+            "invalid_auth": "അസാധുവായ ആധികാരികത",
+            "unknown": "അപ്രതീക്ഷിത പിഴവ്"
+        },
+        "step": {
+            "user": {
+                "data": {
+                    "api_key": "API കീ"
+                }
+            }
+        }
+    }
+}

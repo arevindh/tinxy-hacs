@@ -1,0 +1,19 @@
+{
+    "config": {
+        "abort": {
+            "already_configured": "डिवाइस पहले से ही कॉन्फ़िगर किया गया है"
+        },
+        "error": {
+            "cannot_connect": "कनेक्ट करने में विफल",
+            "invalid_auth": "अमान्य प्रमाणीकरण",
+            "unknown": "अज्ञात त्रुटि"
+        },
+        "step": {
+            "user": {
+                "data": {
+                    "api_key": "API कुंजी"
+                }
+            }
+        }
+    }
+}

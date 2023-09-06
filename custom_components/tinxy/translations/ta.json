@@ -1,0 +1,19 @@
+{
+    "config": {
+        "abort": {
+            "already_configured": "சாதனம் ஏற்கனவே கட்டமைக்கப்பட்டுள்ளது"
+        },
+        "error": {
+            "cannot_connect": "இணைக்க முடியவில்லை",
+            "invalid_auth": "தவறான அங்கீகாரம்",
+            "unknown": "எதிர்பாராத பிழை"
+        },
+        "step": {
+            "user": {
+                "data": {
+                    "api_key": "API விசை"
+                }
+            }
+        }
+    }
+}
