@@ -1,8 +1,7 @@
-"""Example integration using DataUpdateCoordinator."""
+"""Tinxy Data Update Coordinator"""
 
 from datetime import timedelta
 import logging
-
 import async_timeout
 
 from homeassistant.core import HomeAssistant
@@ -12,59 +11,53 @@ from homeassistant.helpers.debounce import Debouncer
 
 from .tinxycloud import TinxyAuthenticationException, TinxyException
 
-# from homeassistant.exceptions import
-
 
 _LOGGER = logging.getLogger(__name__)
 REQUEST_REFRESH_DELAY = 0.35
+API_TIMEOUT = 10  # seconds
 
 
 class TinxyUpdateCoordinator(DataUpdateCoordinator):
     """My custom coordinator."""
 
     def __init__(self, hass: HomeAssistant, my_api) -> None:
-        """Initialize my coordinator."""
+        """Initialize the coordinator."""
         super().__init__(
             hass,
             _LOGGER,
-            # Name of the data. For logging purposes.
             name="Tinxy",
-            # Polling interval. Will only be polled if there are subscribers.
             update_interval=timedelta(seconds=7),
             request_refresh_debouncer=Debouncer(
                 hass, _LOGGER, cooldown=REQUEST_REFRESH_DELAY, immediate=False
             ),
         )
-        # my_api.list_all
-        self.hass = hass
         self.my_api = my_api
+        # First self sync
         self.all_devices = self.my_api.list_all_devices()
 
-    async def _async_update_data(self):
-        """Fetch data from API endpoint.
-
-        This is the place to pre-process the data to lookup tables
-        so entities can quickly look up their data.
-        """
+    async def _async_update_data(self) -> dict:
+        """Fetch data from API endpoint."""
         try:
-            # Note: asyncio.TimeoutError and aiohttp.ClientError are already
-            # handled by the data update coordinator.
-            async with async_timeout.timeout(10):
+            async with async_timeout.timeout(API_TIMEOUT):
+                # Fetch fresh data from API
+                self.all_devices = self.my_api.list_all_devices()
+
+                # Initialize an empty status list
                 status_list = {}
-                # Grab active context variables to limit data required to be fetched from API
-                # Note: using context is not required if there is no need or ability to limit
-                # data retrieved from API.
-                # listening_idx = set(self.async_contexts())
+
+                # Get the status of all devices from the API
                 result = await self.my_api.get_all_status()
 
+                # Update the status list based on the fetched results
                 for device in self.all_devices:
-                    if device["id"] in result:
-                        status_list[device["id"]] = device | result[device["id"]]
+                    device_id = device["id"]
+                    if device_id in result:
+                        status_list[device_id] = {**device, **result[device_id]}
 
                 return status_list
+
         except TinxyAuthenticationException as err:
-            # Raising ConfigEntryAuthFailed will cancel future updates
-            # and start a config flow with SOURCE_REAUTH (async_step_reauth)
-            raise ConfigEntryAuthFailed from err
+            raise ConfigEntryAuthFailed("Authentication failed") from err
+
         except TinxyException as err:
             raise UpdateFailed(f"Error communicating with API: {err}") from err

@@ -18,19 +18,16 @@ class TinxyAuthenticationException(TinxyException):
 @dataclass
 class TinxyHostConfiguration:
     """Tinxy host configuration."""
-
     api_token: str
     api_url: str | None
 
     def __post_init__(self):
-        if self.api_token is None:
+        if not self.api_token:
             raise TinxyAuthenticationException(
-                message="No api token to the was provided."
-            )
-        if self.api_token is None and self.api_url is None:
+                message="No API token was provided.")
+        if not self.api_url:
             raise TinxyException(
-                message="No  url, api token to the Tinxy server was provided."
-            )
+                message="No URL, API token to the Tinxy server was provided.")
 
 
 class TinxyCloud:
@@ -68,28 +65,39 @@ class TinxyCloud:
         self.web_session = web_session
 
     async def tinxy_request(self, path, payload=None, method="GET"):
-        """Tinxy API request."""
+        """Execute a request to the Tinxy API.
 
-        pprint("new request to " + path)
+        Parameters:
+            path (str): The API endpoint path.
+            payload (dict, optional): The payload for POST requests.
+            method (str, optional): The HTTP method to use (default is GET).
 
+        Returns:
+            dict: API response as a JSON object.
+        """
         headers = {
             "Content-Type": "application/json",
-            "Authorization": "Bearer " + self.host_config.api_token,
+            "Authorization": f"Bearer {self.host_config.api_token}"
         }
+
+        # Add source info to payload if present
         if payload:
             payload["source"] = "Home Assistant"
 
-        # async with self.web_session as session:
-        # try:
-        async with self.web_session.request(
-            method=method,
-            url=self.host_config.api_url + path,
-            json=payload,
-            headers=headers,
-        ) as resp:
-            return await resp.json()
-            # except:
-            #     raise TinxyException(message="API [GET] call failed")
+        try:
+            async with self.web_session.request(
+                    method=method,
+                    url=f"{self.host_config.api_url}{path}",
+                    json=payload,
+                    headers=headers,
+            ) as resp:
+                if resp.status == 200:
+                    return await resp.json()
+                else:
+                    raise TinxyException(
+                        f"API call failed with status {resp.status}")
+        except Exception as e:
+            raise TinxyException(f"API call failed: {str(e)}")
 
     async def sync_devices(self):
         """Read all devices from server."""
@@ -131,52 +139,54 @@ class TinxyCloud:
         return False
 
     async def get_all_status(self):
-        """Get sstatus of all devices."""
         status_data = await self.tinxy_request("v2/devices_state")
         device_status = {}
+
         for status in status_data:
-            if "state" in status:
-                single_device = {}
-                if type(status["state"]).__name__ == "list":
-                    for item in status["state"]:
-                        single_device = {}
-                        if "number" in item:
-                            device_id = status["_id"] + "-" + str(item["number"])
-                        else:
-                            device_id = status["_id"] + "-1"
-                            single_device["item"] = item
-                        if "state" in item["state"]:
-                            single_device["state"] = self.state_to_val(
-                                item["state"]["state"]
-                            )
-                        if "status" in item["state"]:
-                            single_device["status"] = item["state"]["status"]
-                        if "brightness" in item["state"]:
-                            single_device["brightness"] = item["state"]["brightness"]
-                        device_status[device_id] = single_device
-                else:
+            device_id_base = status["_id"]
+            state_data = status.get("state", {})
+
+            if isinstance(state_data, list):
+                for item in state_data:
                     single_device = {}
-                    device_id = status["_id"] + "-1"
-                    if "state" in status["state"]:
-                        single_device["state"] = self.state_to_val(
-                            status["state"]["state"]
-                        )
-                    if "status" in status["state"]:
-                        single_device["status"] = status["state"]["status"]
-                    if "brightness" in status["state"]:
-                        single_device["brightness"] = status["state"]["brightness"]
+                    device_number = item.get("number", 1)
+                    device_id = f"{device_id_base}-{device_number}"
+                    single_device["state"] = self.state_to_val(
+                        item.get("state", {}).get("state"))
+                    single_device["status"] = item.get(
+                        "state", {}).get("status")
+                    single_device["brightness"] = item.get(
+                        "state", {}).get("brightness")
                     device_status[device_id] = single_device
+
+            elif isinstance(state_data, dict):
+                single_device = {}
+                device_id = f"{device_id_base}-1"
+                single_device["state"] = self.state_to_val(
+                    state_data.get("state"))
+                single_device["status"] = state_data.get("status")
+                single_device["brightness"] = state_data.get("brightness")
+                device_status[device_id] = single_device
+
+        return device_status
 
         return device_status
 
     async def set_device_state(self, itemid, device_number, state, brightness=None):
         """Set device state."""
-        payload = {"request": {"state": state}, "deviceNumber": device_number}
-        # check if brightness is provided
+        payload = {
+            "request": {"state": state},
+            "deviceNumber": device_number
+        }
+
+        # Add brightness to payload if provided
         if brightness is not None:
             payload["request"]["brightness"] = brightness
+
         return await self.tinxy_request(
-            "v2/devices/" + itemid + "/toggle", payload=payload, method="POST"
+            f"v2/devices/{itemid}/toggle",
+            payload=payload,
+            method="POST"
         )
 
     def get_device_info(self, device):
@@ -195,81 +205,45 @@ class TinxyCloud:
 
     def parse_device(self, data):
         """Parse device."""
-        devices = []
 
-        # Handle single item devices
+        def create_device(device_id, relay_no, name, tinxy_type, gtype, traits, device_info):
+            device_type = self.get_device_type(tinxy_type, relay_no - 1)
+            return {
+                "id": f"{device_id}-{relay_no}",
+                "device_id": device_id,
+                "name": name,
+                "relay_no": relay_no,
+                "gtype": gtype,
+                "traits": traits,
+                "device_type": device_type,
+                "user_device_type": device_type,
+                "device_desc": data["typeId"]["long_name"],
+                "tinxy_type": tinxy_type,
+                "icon": self.icon_generate(device_type),
+                "device": device_info,
+            }
+
+        devices = []
+        device_info = self.get_device_info(data)
+        device_id = data["_id"]
+        tinxy_type = data["typeId"]["name"]
+        name = data["name"]
+        gtype = data["typeId"]["gtype"]
+        traits = data["typeId"]["traits"]
+
+        if tinxy_type not in self.enabled_list:
+            print(f"Unknown type: {tinxy_type}")
+            return devices
+
         if not data["devices"]:
-            # Handle eva EVA_BULB
-            if (
-                data["typeId"]["name"] in self.enabled_list
-                and data["typeId"]["name"] == "EVA_BULB"
-            ):
-                device_type = (
-                    "Light" if data["typeId"]["name"] == "EVA_BULB" else "Switch"
-                )
-                devices.append(
-                    {
-                        "id": data["_id"] + "-1",
-                        "device_id": data["_id"],
-                        "name": data["name"],
-                        "relay_no": 1,
-                        "gtype": data["typeId"]["gtype"],
-                        "traits": data["typeId"]["traits"],
-                        "device_type": device_type,
-                        "user_device_type": device_type,
-                        "device_desc": data["typeId"]["long_name"],
-                        "tinxy_type": data["typeId"]["name"],
-                        "icon": self.icon_generate(data["typeId"]["name"]),
-                        "device": self.get_device_info(data),
-                    }
-                )
-            # Handle single node devices
-            elif data["typeId"]["name"] in self.enabled_list:
-                device_type = self.get_device_type(data["typeId"]["name"], 0)
-                devices.append(
-                    {
-                        "id": data["_id"] + "-1",
-                        "device_id": data["_id"],
-                        "name": data["name"],
-                        "relay_no": 1,
-                        "gtype": data["typeId"]["gtype"],
-                        "traits": data["typeId"]["traits"],
-                        "device_type": device_type,
-                        "user_device_type": device_type,
-                        "device_desc": data["typeId"]["long_name"],
-                        "tinxy_type": data["typeId"]["name"],
-                        "icon": self.icon_generate(device_type),
-                        "device": self.get_device_info(data),
-                    }
-                )
-            else:
-                pass
-                # print('unknown  ='+data['typeId']['name'])
-                # print(self.enabled_list)
-        # Handle multinode_devices
-        elif data["typeId"]["name"] in self.enabled_list:
-            for itemid, nodes in enumerate(data["devices"]):
-                devices.append(
-                    {
-                        "id": data["_id"] + "-" + str(itemid + 1),
-                        "device_id": data["_id"],
-                        "name": data["name"] + " " + nodes,
-                        "relay_no": itemid + 1,
-                        "gtype": data["typeId"]["gtype"],
-                        "traits": data["typeId"]["traits"],
-                        "device_type": self.get_device_type(
-                            data["typeId"]["name"], itemid
-                        ),
-                        "user_device_type": data["deviceTypes"][itemid],
-                        "device_desc": data["typeId"]["long_name"],
-                        "tinxy_type": data["typeId"]["name"],
-                        "icon": self.icon_generate(data["deviceTypes"][itemid]),
-                        "device": self.get_device_info(data),
-                    }
-                )
+            devices.append(create_device(device_id, 1, name,
+                           tinxy_type, gtype, traits, device_info))
         else:
-            print("unknown  =" + data["typeId"]["name"])
-            # print(self.enabled_list)
+            for relay_no, node_name in enumerate(data["devices"], start=1):
+                device_name = f"{name} {node_name}"
+                devices.append(create_device(
+                    device_id, relay_no, device_name, tinxy_type, gtype, traits, device_info))
+
         return devices
 
     def get_device_type(self, tinxy_type, itemid):
@@ -286,24 +260,16 @@ class TinxyCloud:
 
     def icon_generate(self, devicetype):
         """Generate icon name."""
-        if devicetype == "Heater":
-            return "mdi:radiator"
-        elif devicetype == "Tubelight":
-            return "mdi:lightbulb-fluorescent-tube"
-        elif (
-            devicetype == "LED Bulb"
-            or devicetype == "Dimmable Light"
-            or devicetype == "LED Dimmable Bulb"
-            or devicetype == "EVA_BULB"
-        ):
-            return "mdi:lightbulb"
-        elif devicetype == "Music System":
-            return "mdi:music"
-        elif devicetype == "Fan":
-            return "mdi:fan"
-        elif devicetype == "Socket":
-            return "mdi:power-socket-eu"
-        elif devicetype == "TV":
-            return "mdi:television"
-        else:
-            return "mdi:toggle-switch"
+        icon_mapping = {
+            "Heater": "mdi:radiator",
+            "Tubelight": "mdi:lightbulb-fluorescent-tube",
+            "LED Bulb": "mdi:lightbulb",
+            "Dimmable Light": "mdi:lightbulb",
+            "LED Dimmable Bulb": "mdi:lightbulb",
+            "EVA_BULB": "mdi:lightbulb",
+            "Music System": "mdi:music",
+            "Fan": "mdi:fan",
+            "Socket": "mdi:power-socket-eu",
+            "TV": "mdi:television",
+        }
+        return icon_mapping.get(devicetype, "mdi:toggle-switch")
