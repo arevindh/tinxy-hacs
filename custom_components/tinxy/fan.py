@@ -113,14 +113,14 @@ class TinxySwitch(CoordinatorEntity, FanEntity):
             return "Medium"
         return "Low"
 
-    async def async_turn_on(self, **kwargs: Any) -> None:
+    async def async_turn_on(self, _percentage, preset_mode, **kwargs: Any) -> None:
         """Turn the switch on."""
         # self._is_on = True
         await self.api.set_device_state(
             self.coordinator.data[self.idx]["device_id"],
             str(self.coordinator.data[self.idx]["relay_no"]),
             1,
-            self.calculate_percent(self.preset_mode),
+            self.calculate_percent(preset_mode),
         )
         await self.coordinator.async_request_refresh()
 
