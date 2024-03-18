@@ -67,7 +67,7 @@ class TinxyCloud:
     gtype_light = ["action.devices.types.LIGHT"]
     gtype_switch = ["action.devices.types.SWITCH"]
     gtype_lock = ["action.devices.types.LOCK"]
-    typeId_fan = ["WIFI_3SWITCH_1FAN", "Fan", "WIFI_SWITCH_1FAN_V1"]
+    typeId_fan = ["WIFI_3SWITCH_1FAN", "Fan", "WIFI_SWITCH_1FAN_V1","WIFI_3SWITCH_1FAN_V3"]
 
     def __init__(self, host_config: TinxyHostConfiguration, web_session) -> None:
         """Init."""
