@@ -67,6 +67,7 @@ class TinxyCloud:
     gtype_light = ["action.devices.types.LIGHT"]
     gtype_switch = ["action.devices.types.SWITCH"]
     gtype_lock = ["action.devices.types.LOCK"]
+    typeId_lock = ["WIRED_DOOR_LOCK_V3"]
     typeId_fan = ["WIFI_3SWITCH_1FAN", "Fan", "WIFI_SWITCH_1FAN_V1","WIFI_3SWITCH_1FAN_V3"]
 
     def __init__(self, host_config: TinxyHostConfiguration, web_session) -> None:
@@ -122,7 +123,7 @@ class TinxyCloud:
         return [d for d in self.devices if d["device_type"] == "Fan"]
 
     def list_locks(self):
-        """List lokcs."""
+        """List locks."""
         return [d for d in self.devices if d["gtype"] in self.gtype_lock]
 
     async def get_device_state(self, id, device_number):
@@ -160,6 +161,9 @@ class TinxyCloud:
                             single_device["status"] = item["state"]["status"]
                         if "brightness" in item["state"]:
                             single_device["brightness"] = item["state"]["brightness"]
+                        # fix for lock
+                        if "door" in item["state"]:
+                            single_device["door"] = item["state"]["door"]
                         device_status[device_id] = single_device
                 else:
                     single_device = {}
@@ -172,6 +176,9 @@ class TinxyCloud:
                         single_device["status"] = status["state"]["status"]
                     if "brightness" in status["state"]:
                         single_device["brightness"] = status["state"]["brightness"]
+                    # fix for lock
+                    if "door" in status["state"]:
+                        single_device["door"] = status["state"]["door"]
                     device_status[device_id] = single_device
 
         return device_status
@@ -286,8 +293,8 @@ class TinxyCloud:
             return "Fan"
         elif tinxy_type in light_list:
             return "Light"
-        elif tinxy_type in self.gtype_lock:
-            return "Switch"
+        elif tinxy_type in self.typeId_lock:
+            return "Lock"
         else:
             return "Switch"
 
@@ -312,5 +319,7 @@ class TinxyCloud:
             return "mdi:power-socket-eu"
         elif devicetype == "TV":
             return "mdi:television"
+        elif devicetype == "Lock":
+            return "mdi:lock"
         else:
             return "mdi:toggle-switch"
