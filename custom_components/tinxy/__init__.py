@@ -12,7 +12,7 @@ from .coordinator import TinxyUpdateCoordinator
 
 # TODO List the platforms that you want to support.
 # For your initial PR, limit it to 1 platform.
-PLATFORMS: list[Platform] = [Platform.SWITCH, Platform.LIGHT, Platform.FAN]
+PLATFORMS: list[Platform] = [Platform.SWITCH, Platform.LIGHT, Platform.FAN, Platform.LOCK]
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
