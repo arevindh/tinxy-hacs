@@ -11,8 +11,7 @@ from homeassistant.components.light import (
     LightEntity,
     ColorMode,
     ATTR_BRIGHTNESS,
-    COLOR_MODE_ONOFF,
-    COLOR_MODE_BRIGHTNESS,
+    ATTR_COLOR_TEMP_KELVIN 
 )
 
 from .const import DOMAIN
@@ -28,7 +27,7 @@ async def async_setup_entry(
     # assuming API object stored here by __init__.py
     apidata, coordinator = hass.data[DOMAIN][entry.entry_id]
 
-    apidata.list_switches()
+    # apidata.list_switches()
 
     # _LOGGER.error(apidata)
 
@@ -108,6 +107,21 @@ class TinxyLight(CoordinatorEntity, LightEntity):
     def available(self) -> bool:
         """Device available status."""
         return True if self.coordinator.data[self.idx]["status"] == 1 else False
+    
+    @property
+    def max_color_temp_kelvin (self) -> int:
+        """Max Color temperature in kelin"""
+        return 7000
+
+    @property
+    def min_color_temp_kelvin (self) -> int:
+        """Min Color temperature in kelin"""
+        return 2200
+
+    @property
+    def color_temp_kelvin(self) -> str:
+        """Color temperature in kelin"""
+        return self.coordinator.data[self.idx]["colorTemperatureInKelvin"]
 
     @property
     def device_info(self):
@@ -125,27 +139,41 @@ class TinxyLight(CoordinatorEntity, LightEntity):
     @property
     def supported_color_modes(self) -> list[str]:
         """Support color modes"""
-        return [COLOR_MODE_ONOFF, COLOR_MODE_BRIGHTNESS]
+        if "colorTemperatureInKelvin" in self.coordinator.data[self.idx]:
+            return [ColorMode.COLOR_TEMP]
+        else:
+            return [ColorMode.BRIGHTNESS]
 
     @property
     def color_mode(self) -> str:
-        return ColorMode.BRIGHTNESS
+        if "colorTemperatureInKelvin" in self.coordinator.data[self.idx]:
+            return ColorMode.COLOR_TEMP
+        else:
+            return ColorMode.BRIGHTNESS
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn the switch on."""
-        real_brightness = None
+        
         _LOGGER.warning(kwargs)
+        if ATTR_COLOR_TEMP_KELVIN in kwargs:
+            color_temp_kelvin = int(kwargs[ATTR_COLOR_TEMP_KELVIN])
+        else:
+            color_temp_kelvin = None
         if ATTR_BRIGHTNESS in kwargs:
             brightness = int(kwargs[ATTR_BRIGHTNESS])
             real_brightness = math.floor((brightness / 255) * 100)
+        else:
+            real_brightness = None
+
         # self._is_on = True
-        await self.api.set_device_state(
+        errorData = await self.api.set_device_state(
             self.coordinator.data[self.idx]["device_id"],
             str(self.coordinator.data[self.idx]["relay_no"]),
             1,
             real_brightness,
+            color_temp_kelvin
         )
-
+        _LOGGER.error(errorData)
         await self.coordinator.async_request_refresh()
 
     async def async_turn_off(self, **kwargs: Any) -> None:
