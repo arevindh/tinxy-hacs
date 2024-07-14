@@ -111,7 +111,7 @@ class TinxyLight(CoordinatorEntity, LightEntity):
     @property
     def max_color_temp_kelvin (self) -> int:
         """Max Color temperature in kelin"""
-        return 7000
+        return 6952
 
     @property
     def min_color_temp_kelvin (self) -> int:
