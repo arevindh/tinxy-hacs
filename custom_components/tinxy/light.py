@@ -1,4 +1,5 @@
 """Example integration using DataUpdateCoordinator."""
+
 import logging
 from typing import Any
 import math
@@ -11,7 +12,11 @@ from homeassistant.components.light import (
     LightEntity,
     ColorMode,
     ATTR_BRIGHTNESS,
-    ATTR_COLOR_TEMP_KELVIN 
+    COLOR_MODE_ONOFF,
+    COLOR_MODE_BRIGHTNESS,
+    SUPPORT_COLOR_TEMP,
+    SUPPORT_BRIGHTNESS,
+    ATTR_COLOR_TEMP_KELVIN,
 )
 
 from .const import DOMAIN
@@ -45,6 +50,7 @@ async def async_setup_entry(
     status_list = {}
 
     all_devices = apidata.list_lights()
+
     result = await apidata.get_all_status()
 
     for device in all_devices:
@@ -58,15 +64,7 @@ async def async_setup_entry(
 
 
 class TinxyLight(CoordinatorEntity, LightEntity):
-    """An entity using CoordinatorEntity.
-
-    The CoordinatorEntity class provides:
-      should_poll
-      async_update
-      async_added_to_hass
-      available
-
-    """
+    """TinxyLight using CoordinatorEntity."""
 
     def __init__(self, coordinator, apidata, idx) -> None:
         """Pass coordinator to CoordinatorEntity."""
@@ -107,15 +105,15 @@ class TinxyLight(CoordinatorEntity, LightEntity):
     def available(self) -> bool:
         """Device available status."""
         return True if self.coordinator.data[self.idx]["status"] == 1 else False
-    
-    @property
-    def max_color_temp_kelvin (self) -> int:
-        """Max Color temperature in kelin"""
-        return 7000
 
     @property
-    def min_color_temp_kelvin (self) -> int:
-        """Min Color temperature in kelin"""
+    def max_color_temp_kelvin(self) -> int:
+        """Max Color temperature in kelvin"""
+        return 6952
+
+    @property
+    def min_color_temp_kelvin(self) -> int:
+        """Min Color temperature in kevlin"""
         return 2200
 
     @property
@@ -153,7 +151,7 @@ class TinxyLight(CoordinatorEntity, LightEntity):
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn the switch on."""
-        
+
         _LOGGER.warning(kwargs)
         if ATTR_COLOR_TEMP_KELVIN in kwargs:
             color_temp_kelvin = int(kwargs[ATTR_COLOR_TEMP_KELVIN])
@@ -171,7 +169,7 @@ class TinxyLight(CoordinatorEntity, LightEntity):
             str(self.coordinator.data[self.idx]["relay_no"]),
             1,
             real_brightness,
-            color_temp_kelvin
+            color_temp_kelvin,
         )
         _LOGGER.error(errorData)
         await self.coordinator.async_request_refresh()
@@ -179,9 +177,22 @@ class TinxyLight(CoordinatorEntity, LightEntity):
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn the switch off."""
         # self._is_on = False
+
+        if ATTR_COLOR_TEMP_KELVIN in kwargs:
+            color_temp_kelvin = int(kwargs[ATTR_COLOR_TEMP_KELVIN])
+        else:
+            color_temp_kelvin = None
+        if ATTR_BRIGHTNESS in kwargs:
+            brightness = int(kwargs[ATTR_BRIGHTNESS])
+            real_brightness = math.floor((brightness / 255) * 100)
+        else:
+            real_brightness = None
+
         await self.api.set_device_state(
             self.coordinator.data[self.idx]["device_id"],
             str(self.coordinator.data[self.idx]["relay_no"]),
             0,
+            real_brightness,
+            color_temp_kelvin,
         )
         await self.coordinator.async_request_refresh()
