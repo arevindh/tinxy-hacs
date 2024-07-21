@@ -290,10 +290,10 @@ class TinxyCloud:
                     }
                 )
             else:
-                self._LOGGER.error(
+                self._LOGGER.warn(
                     "Unknown device "
                     + data["typeId"]["name"]
-                    + ", please create github issue with this"
+                    + ", please create github issue with this. Ignore erros from EVA_HUB."
                 )
                 pass
                 # print('unknown  ='+data['typeId']['name'])
