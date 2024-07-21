@@ -40,6 +40,8 @@ class TinxyUpdateCoordinator(DataUpdateCoordinator):
         self.my_api = my_api
         self.all_devices = self.my_api.list_all_devices()
 
+        # _LOGGER.error(self.all_devices)
+
     async def _async_update_data(self):
         """Fetch data from API endpoint.
 
@@ -56,6 +58,8 @@ class TinxyUpdateCoordinator(DataUpdateCoordinator):
                 # data retrieved from API.
                 # listening_idx = set(self.async_contexts())
                 result = await self.my_api.get_all_status()
+
+                # _LOGGER.error(result)
 
                 for device in self.all_devices:
                     if device["id"] in result:

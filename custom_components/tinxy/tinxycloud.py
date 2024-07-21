@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from pprint import pprint
 import logging
 
+
 class TinxyException(Exception):
     """Tinxy Exception."""
 
@@ -71,8 +72,13 @@ class TinxyCloud:
     gtype_switch = ["action.devices.types.SWITCH"]
     gtype_lock = ["action.devices.types.LOCK"]
     typeId_lock = ["WIRED_DOOR_LOCK_V3"]
-    typeId_eva = ["EVA_BULB_WW","EVA_BULB"]
-    typeId_fan = ["WIFI_3SWITCH_1FAN", "Fan", "WIFI_SWITCH_1FAN_V1","WIFI_3SWITCH_1FAN_V3"]
+    typeId_eva = ["EVA_BULB_WW", "EVA_BULB"]
+    typeId_fan = [
+        "WIFI_3SWITCH_1FAN",
+        "Fan",
+        "WIFI_SWITCH_1FAN_V1",
+        "WIFI_3SWITCH_1FAN_V3",
+    ]
 
     def __init__(self, host_config: TinxyHostConfiguration, web_session) -> None:
         """Init."""
@@ -91,6 +97,12 @@ class TinxyCloud:
         if payload:
             payload["source"] = "Home Assistant"
 
+        self._LOGGER.warn(
+            method,
+            self.host_config.api_url + path,
+            payload,
+            headers,
+        )
         # async with self.web_session as session:
         # try:
         async with self.web_session.request(
@@ -169,7 +181,9 @@ class TinxyCloud:
                         if "door" in item["state"]:
                             single_device["door"] = item["state"]["door"]
                         if "colorTemperatureInKelvin" in item["state"]:
-                            single_device["colorTemperatureInKelvin"] = item["state"]["colorTemperatureInKelvin"]
+                            single_device["colorTemperatureInKelvin"] = item["state"][
+                                "colorTemperatureInKelvin"
+                            ]
                         device_status[device_id] = single_device
                 else:
                     single_device = {}
@@ -186,13 +200,17 @@ class TinxyCloud:
                     if "door" in status["state"]:
                         single_device["door"] = status["state"]["door"]
                     if "colorTemperatureInKelvin" in status["state"]:
-                        single_device["colorTemperatureInKelvin"] = status["state"]["colorTemperatureInKelvin"]
+                        single_device["colorTemperatureInKelvin"] = status["state"][
+                            "colorTemperatureInKelvin"
+                        ]
 
                     device_status[device_id] = single_device
 
         return device_status
 
-    async def set_device_state(self, itemid, device_number, state, brightness=None, color_temp=None):
+    async def set_device_state(
+        self, itemid, device_number, state, brightness=None, color_temp=None
+    ):
         """Set device state."""
         payload = {"request": {"state": state}, "deviceNumber": device_number}
         # check if brightness is provided
@@ -200,6 +218,8 @@ class TinxyCloud:
             payload["request"]["brightness"] = brightness
         if color_temp is not None:
             payload["request"]["colorTemperatureInKelvin"] = color_temp
+
+        self._LOGGER.error(["v2/devices/" + itemid + "/toggle", payload])
         return await self.tinxy_request(
             "v2/devices/" + itemid + "/toggle", payload=payload, method="POST"
         )
@@ -224,7 +244,6 @@ class TinxyCloud:
 
         # Handle single item devices
         if not data["devices"]:
-            
             # Handle eva EVA_BULB
             if (
                 data["typeId"]["name"] in self.enabled_list
@@ -234,7 +253,7 @@ class TinxyCloud:
                     "Light" if data["typeId"]["name"] in self.typeId_eva else "Switch"
                 )
 
-                self._LOGGER.error('Light')
+                self._LOGGER.error("Light")
                 devices.append(
                     {
                         "id": data["_id"] + "-1",
@@ -271,9 +290,14 @@ class TinxyCloud:
                     }
                 )
             else:
-                self._LOGGER.warn('Unknown device '+data['typeId']['name'] + ", please create github issue with this")
+                self._LOGGER.error(
+                    "Unknown device "
+                    + data["typeId"]["name"]
+                    + ", please create github issue with this"
+                )
                 pass
-
+                # print('unknown  ='+data['typeId']['name'])
+                # print(self.enabled_list)
         # Handle multinode_devices
         elif data["typeId"]["name"] in self.enabled_list:
             for itemid, nodes in enumerate(data["devices"]):
@@ -297,7 +321,8 @@ class TinxyCloud:
                 )
         else:
             print("unknown  =" + data["typeId"]["name"])
-            
+
+            # print(self.enabled_list)
         return devices
 
     def get_device_type(self, tinxy_type, itemid):
