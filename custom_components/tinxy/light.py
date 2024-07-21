@@ -33,7 +33,7 @@ async def async_setup_entry(
     status_list = {}
     all_devices = apidata.list_lights()
 
-    _LOGGER.error(all_devices)
+    # _LOGGER.error(all_devices)
     result = await apidata.get_all_status()
 
     for device in all_devices:
