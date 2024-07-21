@@ -97,12 +97,12 @@ class TinxyCloud:
         if payload:
             payload["source"] = "Home Assistant"
 
-        self._LOGGER.warn(
-            method,
-            self.host_config.api_url + path,
-            payload,
-            headers,
-        )
+        # self._LOGGER.warn(
+        #     method,
+        #     self.host_config.api_url + path,
+        #     payload,
+        #     headers,
+        # )
         # async with self.web_session as session:
         # try:
         async with self.web_session.request(
@@ -219,7 +219,7 @@ class TinxyCloud:
         if color_temp is not None:
             payload["request"]["colorTemperatureInKelvin"] = color_temp
 
-        self._LOGGER.error(["v2/devices/" + itemid + "/toggle", payload])
+        # self._LOGGER.error(["v2/devices/" + itemid + "/toggle", payload])
         return await self.tinxy_request(
             "v2/devices/" + itemid + "/toggle", payload=payload, method="POST"
         )
@@ -253,7 +253,7 @@ class TinxyCloud:
                     "Light" if data["typeId"]["name"] in self.typeId_eva else "Switch"
                 )
 
-                self._LOGGER.error("Light")
+                # self._LOGGER.error("Light")
                 devices.append(
                     {
                         "id": data["_id"] + "-1",
