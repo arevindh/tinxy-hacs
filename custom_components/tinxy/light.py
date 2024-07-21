@@ -58,15 +58,24 @@ class TinxyLight(CoordinatorEntity, LightEntity):
         self.api = apidata
 
         device_data = self.coordinator.data[self.idx]
-        self.data_brightness = math.floor(
-            (device_data.get("brightness", 0) / 100) * 255
-        )
-        self.data_tempcolor = device_data.get("colorTemperatureInKelvin", None)
-        self.data_color_mode = (
-            ColorMode.COLOR_TEMP
-            if "colorTemperatureInKelvin" in device_data
-            else ColorMode.BRIGHTNESS
-        )
+        self.data_brightness = None
+        self.data_tempcolor = None
+
+        traits = device_data.get("traits", [])
+
+        if (
+            "action.devices.traits.ColorSetting" in traits
+            and "action.devices.traits.Brightness" in traits
+        ):
+            self.data_color_mode = ColorMode.COLOR_TEMP
+            self.data_tempcolor = device_data.get("colorTemperatureInKelvin", 6952)
+        elif "action.devices.traits.Brightness" in traits:
+            self.data_color_mode = ColorMode.BRIGHTNESS
+            self.data_brightness = math.floor(
+                (device_data.get("brightness", 0) / 100) * 255
+            )
+        else:
+            self.data_color_mode = ColorMode.ONOFF
 
     @callback
     def _handle_coordinator_update(self) -> None:
@@ -112,7 +121,10 @@ class TinxyLight(CoordinatorEntity, LightEntity):
     @property
     def color_temp_kelvin(self) -> int:
         """Return the color temperature in Kelvin."""
-        return self.coordinator.data[self.idx].get("colorTemperatureInKelvin")
+        if self.data_color_mode == ColorMode.COLOR_TEMP:
+            return self.coordinator.data[self.idx].get("colorTemperatureInKelvin", 6952)
+        else:
+            return None
 
     @property
     def device_info(self) -> dict:
@@ -122,16 +134,18 @@ class TinxyLight(CoordinatorEntity, LightEntity):
     @property
     def brightness(self) -> int:
         """Return the brightness of the light."""
-        return math.floor(
-            (self.coordinator.data[self.idx].get("brightness", 0) / 100) * 255
-        )
+        if self.data_color_mode == ColorMode.BRIGHTNESS:
+            return math.floor(
+                (self.coordinator.data[self.idx].get("brightness", 0) / 100) * 255
+            )
+        else:
+            return None
+
 
     @property
     def supported_color_modes(self) -> list[str]:
         """Return the supported color modes."""
-        if "colorTemperatureInKelvin" in self.coordinator.data[self.idx]:
-            return [ColorMode.COLOR_TEMP]
-        return [ColorMode.BRIGHTNESS]
+        return [self.data_color_mode]
 
     @property
     def color_mode(self) -> str:
@@ -140,42 +154,33 @@ class TinxyLight(CoordinatorEntity, LightEntity):
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn the light on."""
-        _LOGGER.warning(kwargs)
-
         brightness = kwargs.get(ATTR_BRIGHTNESS, self.data_brightness)
         real_brightness = math.floor((brightness / 255) * 100) if brightness else None
 
-        if self.data_color_mode == ColorMode.COLOR_TEMP:
-            color_temp_kelvin = kwargs.get(ATTR_COLOR_TEMP_KELVIN, self.data_tempcolor)
-        else:
-            color_temp_kelvin = None
+        color_temp_kelvin = kwargs.get(ATTR_COLOR_TEMP_KELVIN, None)
 
-        reponse_data = await self.api.set_device_state(
+        await self.api.set_device_state(
             itemid=self.coordinator.data[self.idx]["device_id"],
             device_number=str(self.coordinator.data[self.idx]["relay_no"]),
             state=1,
             brightness=real_brightness,
             color_temp=color_temp_kelvin,
         )
-        _LOGGER.error(msg=reponse_data)
+
         await self.coordinator.async_request_refresh()
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn the light off."""
         brightness = kwargs.get(ATTR_BRIGHTNESS, self.data_brightness)
         real_brightness = math.floor((brightness / 255) * 100) if brightness else None
+        color_temp_kelvin = kwargs.get(ATTR_COLOR_TEMP_KELVIN, None)
 
-        if self.data_color_mode == ColorMode.COLOR_TEMP:
-            color_temp_kelvin = kwargs.get(ATTR_COLOR_TEMP_KELVIN, self.data_tempcolor)
-        else:
-            color_temp_kelvin = None
-
-        reponse_data = await self.api.set_device_state(
+        await self.api.set_device_state(
             itemid=self.coordinator.data[self.idx]["device_id"],
             device_number=str(self.coordinator.data[self.idx]["relay_no"]),
             state=0,
             brightness=real_brightness,
             color_temp=color_temp_kelvin,
         )
-        _LOGGER.error(msg=reponse_data)
+
         await self.coordinator.async_request_refresh()
