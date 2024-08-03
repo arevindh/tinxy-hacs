@@ -1,4 +1,5 @@
 """Example integration using DataUpdateCoordinator."""
+
 import logging
 from typing import Any
 import math
@@ -11,8 +12,7 @@ from homeassistant.components.light import (
     LightEntity,
     ColorMode,
     ATTR_BRIGHTNESS,
-    COLOR_MODE_ONOFF,
-    COLOR_MODE_BRIGHTNESS,
+    ATTR_COLOR_TEMP_KELVIN,
 )
 
 from .const import DOMAIN
@@ -24,57 +24,58 @@ _LOGGER = logging.getLogger(__name__)
 async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities
 ) -> None:
-    """Config entry example."""
-    # assuming API object stored here by __init__.py
+    """Set up Tinxy light entities from a config entry."""
     apidata, coordinator = hass.data[DOMAIN][entry.entry_id]
 
-    apidata.list_switches()
-
-    # _LOGGER.error(apidata)
-
-    # Fetch initial data so we have data when entities subscribe
-    #
-    # If the refresh fails, async_config_entry_first_refresh will
-    # raise ConfigEntryNotReady and setup will try again later
-    #
-    # If you do not want to retry setup on failure, use
-    # coordinator.async_refresh() instead
-    #
     await coordinator.async_config_entry_first_refresh()
     switches = []
 
     status_list = {}
-
     all_devices = apidata.list_lights()
+
+    # _LOGGER.error(all_devices)
     result = await apidata.get_all_status()
 
     for device in all_devices:
         if device["id"] in result:
-            status_list[device["id"]] = device | result[device["id"]]
+            status_list[device["id"]] = {**device, **result[device["id"]]}
 
-    for th_device in status_list:
-        switches.append(TinxyLight(coordinator, apidata, th_device))
+    for device in status_list.values():
+        switches.append(TinxyLight(coordinator, apidata, device["id"]))
 
     async_add_entities(switches)
 
 
 class TinxyLight(CoordinatorEntity, LightEntity):
-    """An entity using CoordinatorEntity.
+    """Representation of a Tinxy light."""
 
-    The CoordinatorEntity class provides:
-      should_poll
-      async_update
-      async_added_to_hass
-      available
-
-    """
-
-    def __init__(self, coordinator, apidata, idx) -> None:
-        """Pass coordinator to CoordinatorEntity."""
-        super().__init__(coordinator, context=idx)
-        self.idx = idx
-        self.coordinator = coordinator
+    def __init__(
+        self, coordinator: TinxyUpdateCoordinator, apidata: Any, device_id: str
+    ) -> None:
+        """Initialize the Tinxy light."""
+        super().__init__(coordinator)
+        self.idx = device_id
         self.api = apidata
+
+        device_data = self.coordinator.data[self.idx]
+        self.data_brightness = None
+        self.data_tempcolor = None
+
+        traits = device_data.get("traits", [])
+
+        if (
+            "action.devices.traits.ColorSetting" in traits
+            and "action.devices.traits.Brightness" in traits
+        ):
+            self.data_color_mode = ColorMode.COLOR_TEMP
+            self.data_tempcolor = device_data.get("colorTemperatureInKelvin", 6952)
+        elif "action.devices.traits.Brightness" in traits:
+            self.data_color_mode = ColorMode.BRIGHTNESS
+            self.data_brightness = math.floor(
+                (device_data.get("brightness", 0) / 100) * 255
+            )
+        else:
+            self.data_color_mode = ColorMode.ONOFF
 
     @callback
     def _handle_coordinator_update(self) -> None:
@@ -84,76 +85,102 @@ class TinxyLight(CoordinatorEntity, LightEntity):
 
     @property
     def unique_id(self) -> str:
-        """dasdasdasd."""
+        """Return the unique ID of the light."""
         return self.coordinator.data[self.idx]["id"]
 
     @property
     def icon(self) -> str:
-        """Icon for entity."""
+        """Return the icon of the light."""
         return self.coordinator.data[self.idx]["icon"]
 
     @property
     def name(self) -> str:
-        """Name of the entity."""
+        """Return the name of the light."""
         return self.coordinator.data[self.idx]["name"]
 
     @property
     def is_on(self) -> bool:
-        """If the switch is currently on or off."""
-        # self.read_status()
+        """Return true if the light is on."""
         return self.coordinator.data[self.idx]["state"]
-        # return False
 
     @property
     def available(self) -> bool:
-        """Device available status."""
-        return True if self.coordinator.data[self.idx]["status"] == 1 else False
+        """Return true if the light is available."""
+        return self.coordinator.data[self.idx]["status"] == 1
 
     @property
-    def device_info(self):
+    def max_color_temp_kelvin(self) -> int:
+        """Return the maximum color temperature in Kelvin."""
+        return 6952
+
+    @property
+    def min_color_temp_kelvin(self) -> int:
+        """Return the minimum color temperature in Kelvin."""
+        return 2200
+
+    @property
+    def color_temp_kelvin(self) -> int:
+        """Return the color temperature in Kelvin."""
+        if self.data_color_mode == ColorMode.COLOR_TEMP:
+            return self.coordinator.data[self.idx].get("colorTemperatureInKelvin", 6952)
+        else:
+            return None
+
+    @property
+    def device_info(self) -> dict:
+        """Return the device info."""
         return self.coordinator.data[self.idx]["device"]
 
     @property
-    def brightness(self):
-        if "brightness" in self.coordinator.data[self.idx]:
+    def brightness(self) -> int:
+        """Return the brightness of the light."""
+        if self.data_color_mode == ColorMode.BRIGHTNESS:
             return math.floor(
-                (self.coordinator.data[self.idx]["brightness"] / 100) * 255
+                (self.coordinator.data[self.idx].get("brightness", 0) / 100) * 255
             )
         else:
-            return 0
+            return None
+
 
     @property
     def supported_color_modes(self) -> list[str]:
-        """Support color modes"""
-        return [COLOR_MODE_ONOFF, COLOR_MODE_BRIGHTNESS]
+        """Return the supported color modes."""
+        return [self.data_color_mode]
 
     @property
     def color_mode(self) -> str:
-        return ColorMode.BRIGHTNESS
+        """Return the color mode."""
+        return self.data_color_mode
 
     async def async_turn_on(self, **kwargs: Any) -> None:
-        """Turn the switch on."""
-        real_brightness = None
-        _LOGGER.warning(kwargs)
-        if ATTR_BRIGHTNESS in kwargs:
-            brightness = int(kwargs[ATTR_BRIGHTNESS])
-            real_brightness = math.floor((brightness / 255) * 100)
-        # self._is_on = True
+        """Turn the light on."""
+        brightness = kwargs.get(ATTR_BRIGHTNESS, self.data_brightness)
+        real_brightness = math.floor((brightness / 255) * 100) if brightness else None
+
+        color_temp_kelvin = kwargs.get(ATTR_COLOR_TEMP_KELVIN, None)
+
         await self.api.set_device_state(
-            self.coordinator.data[self.idx]["device_id"],
-            str(self.coordinator.data[self.idx]["relay_no"]),
-            1,
-            real_brightness,
+            itemid=self.coordinator.data[self.idx]["device_id"],
+            device_number=str(self.coordinator.data[self.idx]["relay_no"]),
+            state=1,
+            brightness=real_brightness,
+            color_temp=color_temp_kelvin,
         )
 
         await self.coordinator.async_request_refresh()
 
     async def async_turn_off(self, **kwargs: Any) -> None:
-        """Turn the switch off."""
-        # self._is_on = False
+        """Turn the light off."""
+        brightness = kwargs.get(ATTR_BRIGHTNESS, self.data_brightness)
+        real_brightness = math.floor((brightness / 255) * 100) if brightness else None
+        color_temp_kelvin = kwargs.get(ATTR_COLOR_TEMP_KELVIN, None)
+
         await self.api.set_device_state(
-            self.coordinator.data[self.idx]["device_id"],
-            str(self.coordinator.data[self.idx]["relay_no"]),
-            0,
+            itemid=self.coordinator.data[self.idx]["device_id"],
+            device_number=str(self.coordinator.data[self.idx]["relay_no"]),
+            state=0,
+            brightness=real_brightness,
+            color_temp=color_temp_kelvin,
         )
+
         await self.coordinator.async_request_refresh()

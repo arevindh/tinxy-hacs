@@ -80,9 +80,9 @@ class TinxyLock(CoordinatorEntity, LockEntity):
         """Handle updated data from the coordinator."""
         self._attr_is_open = self.coordinator.data[self.idx]["door"] == "OPEN"
     
-        _LOGGER.error(
-            self.coordinator.data[self.idx]
-        )
+        # _LOGGER.error(
+        #     self.coordinator.data[self.idx]
+        # )
 
         self.async_write_ha_state()
 
@@ -103,18 +103,13 @@ class TinxyLock(CoordinatorEntity, LockEntity):
 
     @property
     def is_locked(self) -> bool:
-        """If the switch is currently on or off."""
-        # self.read_status()
-        return self.coordinator.data[self.idx]["door"] != "OPEN"
-        # return False
+        """Return true if the lock is locked."""
+        return self.coordinator.data[self.idx].get("door", self.coordinator.data[self.idx]["state"]) != "OPEN"
 
     @property
     def is_open(self) -> bool:
-        """If the switch is currently on or off."""
-        # self.read_status()
-        return self.coordinator.data[self.idx]["door"] == "OPEN"
-        # return False
-
+        """Return true if the lock is open."""
+        return self.coordinator.data[self.idx].get("door", self.coordinator.data[self.idx]["state"]) == "OPEN"
 
     @property
     def available(self) -> bool:
