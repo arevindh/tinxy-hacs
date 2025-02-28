@@ -102,7 +102,11 @@ class TinxySwitch(CoordinatorEntity, FanEntity):
     @property
     def supported_features(self) -> FanEntityFeature:
         """List all supported features"""
-        return FanEntityFeature.PRESET_MODE
+        return (
+            FanEntityFeature.PRESET_MODE
+            | FanEntityFeature.TURN_ON
+            | FanEntityFeature.TURN_OFF
+        )
 
     @property
     def preset_mode(self) -> str | None:
