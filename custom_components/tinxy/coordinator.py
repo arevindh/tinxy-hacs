@@ -2,6 +2,7 @@
 
 from datetime import timedelta
 import logging
+from typing import Any
 
 import async_timeout
 
@@ -19,7 +20,7 @@ REQUEST_REFRESH_DELAY = 0.35
 class TinxyUpdateCoordinator(DataUpdateCoordinator):
     """Tinxy data update coordinator."""
 
-    def __init__(self, hass: HomeAssistant, my_api) -> None:
+    def __init__(self, hass: HomeAssistant, my_api: Any) -> None:
         """Initialize coordinator."""
         super().__init__(
             hass,

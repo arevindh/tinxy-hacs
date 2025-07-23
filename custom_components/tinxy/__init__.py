@@ -2,11 +2,11 @@
 from __future__ import annotations
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import Platform
+from homeassistant.const import Platform, CONF_API_KEY
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
-from .const import CONF_API_KEY, DOMAIN, TINXY_BACKEND
+from .const import DOMAIN, TINXY_BACKEND
 from .tinxycloud import TinxyCloud, TinxyHostConfiguration
 from .coordinator import TinxyUpdateCoordinator
 

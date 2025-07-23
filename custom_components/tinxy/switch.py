@@ -5,16 +5,16 @@ from typing import Any
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
-from .coordinator import TinxyUpdateCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(
-    hass: HomeAssistant, entry: ConfigEntry, async_add_entities
+    hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
 ) -> None:
     """Set up Tinxy switch entities from a config entry."""
     apidata, coordinator = hass.data[DOMAIN][entry.entry_id]
@@ -40,7 +40,7 @@ async def async_setup_entry(
 class TinxySwitch(CoordinatorEntity, SwitchEntity):
     """Tinxy switch entity."""
 
-    def __init__(self, coordinator, apidata, idx) -> None:
+    def __init__(self, coordinator: Any, apidata: Any, idx: str) -> None:
         """Initialize the Tinxy switch."""
         super().__init__(coordinator, context=idx)
         self.idx = idx

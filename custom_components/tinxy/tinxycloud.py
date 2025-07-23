@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 import logging
+from typing import Any
 
 
 class TinxyException(Exception):
@@ -79,7 +80,7 @@ class TinxyCloud:
         "WIFI_3SWITCH_1FAN_V3",
     ]
 
-    def __init__(self, host_config: TinxyHostConfiguration, web_session) -> None:
+    def __init__(self, host_config: TinxyHostConfiguration, web_session: Any) -> None:
         """Init."""
         self.host_config = host_config
         self.web_session = web_session
