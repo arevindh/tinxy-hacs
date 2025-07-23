@@ -10,8 +10,6 @@ from .const import CONF_API_KEY, DOMAIN, TINXY_BACKEND
 from .tinxycloud import TinxyCloud, TinxyHostConfiguration
 from .coordinator import TinxyUpdateCoordinator
 
-# TODO List the platforms that you want to support.
-# For your initial PR, limit it to 1 platform.
 PLATFORMS: list[Platform] = [Platform.SWITCH, Platform.LIGHT, Platform.FAN, Platform.LOCK]
 
 

@@ -1,5 +1,5 @@
 {
     "name": "Tinxy Smart Devices",
     "render_readme": true,
-    "domains": ["switch"]
+    "domains": ["switch", "light", "fan", "lock"]
 }

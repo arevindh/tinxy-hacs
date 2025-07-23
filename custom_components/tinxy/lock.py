@@ -1,4 +1,4 @@
-"""Example integration using DataUpdateCoordinator."""
+"""Tinxy lock platform."""
 
 import logging
 from typing import Any
@@ -20,20 +20,9 @@ _LOGGER = logging.getLogger(__name__)
 async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities
 ) -> None:
-    """Config entry example."""
-    # assuming API object stored here by __init__.py
+    """Set up Tinxy lock entities from a config entry."""
     apidata, coordinator = hass.data[DOMAIN][entry.entry_id]
 
-    # _LOGGER.error(apidata)
-
-    # Fetch initial data so we have data when entities subscribe
-    #
-    # If the refresh fails, async_config_entry_first_refresh will
-    # raise ConfigEntryNotReady and setup will try again later
-    #
-    # If you do not want to retry setup on failure, use
-    # coordinator.async_refresh() instead
-    #
     await coordinator.async_config_entry_first_refresh()
     locks = []
 
@@ -53,52 +42,34 @@ async def async_setup_entry(
 
 
 class TinxyLock(CoordinatorEntity, LockEntity):
-    """An entity using CoordinatorEntity.
-
-    The CoordinatorEntity class provides:
-      should_poll
-      async_update
-      async_added_to_hass
-      available
-
-    """
+    """Tinxy lock entity."""
 
     def __init__(self, coordinator, apidata, idx) -> None:
-        """Pass coordinator to CoordinatorEntity."""
+        """Initialize the Tinxy lock."""
         super().__init__(coordinator, context=idx)
         self.idx = idx
         self.coordinator = coordinator
         self.api = apidata
-        # _LOGGER.warning(
-        #     self.coordinator.data[self.idx]["name"]
-        #     + " - "
-        #     + self.coordinator.data[self.idx]["state"]
-        # )
 
     @callback
     def _handle_coordinator_update(self) -> None:
         """Handle updated data from the coordinator."""
         self._attr_is_open = self.coordinator.data[self.idx]["door"] == "OPEN"
-    
-        # _LOGGER.error(
-        #     self.coordinator.data[self.idx]
-        # )
-
         self.async_write_ha_state()
 
     @property
     def unique_id(self) -> str:
-        """dasdasdasd."""
+        """Return unique ID for the entity."""
         return self.coordinator.data[self.idx]["id"]
 
     @property
     def icon(self) -> str:
-        """Icon for entity."""
+        """Return icon for entity."""
         return self.coordinator.data[self.idx]["icon"]
 
     @property
     def name(self) -> str:
-        """Name of the entity."""
+        """Return name of the entity."""
         return self.coordinator.data[self.idx]["name"]
 
     @property
@@ -113,16 +84,16 @@ class TinxyLock(CoordinatorEntity, LockEntity):
 
     @property
     def available(self) -> bool:
-        """Device available status."""
+        """Return device available status."""
         return True if self.coordinator.data[self.idx]["status"] == 1 else False
 
     @property
     def device_info(self):
+        """Return device information."""
         return self.coordinator.data[self.idx]["device"]
 
     async def async_unlock(self, **kwargs: Any) -> None:
-        """Turn the switch on."""
-        # self._is_on = True
+        """Unlock the lock."""
         await self.api.set_device_state(
             self.coordinator.data[self.idx]["device_id"],
             str(self.coordinator.data[self.idx]["relay_no"]),
@@ -132,8 +103,7 @@ class TinxyLock(CoordinatorEntity, LockEntity):
         await self.coordinator.async_request_refresh()
 
     async def async_lock(self, **kwargs: Any) -> None:
-        """Turn the switch off."""
-        # self._is_on = False
+        """Lock the lock."""
         await self.api.set_device_state(
             self.coordinator.data[self.idx]["device_id"],
             str(self.coordinator.data[self.idx]["relay_no"]),

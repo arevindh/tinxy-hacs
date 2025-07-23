@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from pprint import pprint
 import logging
 
 
@@ -26,11 +25,11 @@ class TinxyHostConfiguration:
     def __post_init__(self):
         if self.api_token is None:
             raise TinxyAuthenticationException(
-                message="No api token to the was provided."
+                message="No API token was provided."
             )
-        if self.api_token is None and self.api_url is None:
+        if self.api_url is None:
             raise TinxyException(
-                message="No  url, api token to the Tinxy server was provided."
+                message="No API URL was provided."
             )
 
 

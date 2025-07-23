@@ -1,19 +1,18 @@
-"""Example integration using DataUpdateCoordinator."""
+"""Tinxy light platform."""
 
 import logging
 from typing import Any
 import math
 
-from homeassistant.components.light import LightEntity
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.components.light import (
     LightEntity,
     ColorMode,
     ATTR_BRIGHTNESS,
     ATTR_COLOR_TEMP_KELVIN,
 )
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
 from .coordinator import TinxyUpdateCoordinator
@@ -28,12 +27,11 @@ async def async_setup_entry(
     apidata, coordinator = hass.data[DOMAIN][entry.entry_id]
 
     await coordinator.async_config_entry_first_refresh()
-    switches = []
+    lights = []
 
     status_list = {}
     all_devices = apidata.list_lights()
 
-    # _LOGGER.error(all_devices)
     result = await apidata.get_all_status()
 
     for device in all_devices:
@@ -41,9 +39,9 @@ async def async_setup_entry(
             status_list[device["id"]] = {**device, **result[device["id"]]}
 
     for device in status_list.values():
-        switches.append(TinxyLight(coordinator, apidata, device["id"]))
+        lights.append(TinxyLight(coordinator, apidata, device["id"]))
 
-    async_add_entities(switches)
+    async_add_entities(lights)
 
 
 class TinxyLight(CoordinatorEntity, LightEntity):
@@ -123,8 +121,7 @@ class TinxyLight(CoordinatorEntity, LightEntity):
         """Return the color temperature in Kelvin."""
         if self.data_color_mode == ColorMode.COLOR_TEMP:
             return self.coordinator.data[self.idx].get("colorTemperatureInKelvin", 6952)
-        else:
-            return None
+        return None
 
     @property
     def device_info(self) -> dict:
@@ -138,9 +135,7 @@ class TinxyLight(CoordinatorEntity, LightEntity):
             return math.floor(
                 (self.coordinator.data[self.idx].get("brightness", 0) / 100) * 255
             )
-        else:
-            return None
-
+        return None
 
     @property
     def supported_color_modes(self) -> list[str]:

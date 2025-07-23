@@ -13,7 +13,7 @@ from homeassistant.data_entry_flow import FlowResult
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
-from .const import CONF_API_KEY, DOMAIN, TINXY_BACKEND
+from .const import DOMAIN, TINXY_BACKEND
 from .tinxycloud import TinxyCloud, TinxyHostConfiguration
 
 _LOGGER = logging.getLogger(__name__)
@@ -25,46 +25,26 @@ STEP_USER_DATA_SCHEMA = vol.Schema(
 )
 
 
-class TinxyHub:
-    def __init__(self, host: str) -> bool:
-        """Initialize."""
-
-        self.host = host
-
-    async def authenticate(self, api_key: str, web_session) -> bool:
-        """Test if we can authenticate with the host."""
-
-        host_config = TinxyHostConfiguration(api_token=api_key, api_url=self.host)
-        api = TinxyCloud(host_config=host_config, web_session=web_session)
-        await api.sync_devices()
-        return True
-
-
 async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str, Any]:
     """Validate the user input allows us to connect.
 
     Data has the keys from STEP_USER_DATA_SCHEMA with values provided by the user.
     """
-    # TODO validate the data can be used to set up a connection.
-
-    # If your PyPI package is not built with async, pass your methods
-    # to the executor:
-    # await hass.async_add_executor_job(
-    #     your_validate_func, data["username"], data["password"]
-    # )
     web_session = async_get_clientsession(hass)
-    hub = TinxyHub(TINXY_BACKEND)
+    
+    host_config = TinxyHostConfiguration(
+        api_token=data[CONF_API_KEY], 
+        api_url=TINXY_BACKEND
+    )
+    api = TinxyCloud(host_config=host_config, web_session=web_session)
+    
+    try:
+        await api.sync_devices()
+    except Exception as err:
+        _LOGGER.error("Failed to authenticate with Tinxy API: %s", err)
+        raise InvalidAuth from err
 
-    if not await hub.authenticate(data[CONF_API_KEY], web_session):
-        raise InvalidAuth
-
-    # If you cannot connect:
-    # throw CannotConnect
-    # If the authentication is wrong:
-    # InvalidAuth
-
-    # Return info that you want to store in the config entry.
-    return {"title": "Tinxy.in"}
+    return {"title": "Tinxy"}
 
 
 class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
