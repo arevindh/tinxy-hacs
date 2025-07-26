@@ -1,5 +1,3 @@
-
-
 """
 Tinxy Light Platform Integration for Home Assistant
 

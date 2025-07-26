@@ -1,4 +1,3 @@
-
 """
 Tinxy Switch Platform for Home Assistant
 ---------------------------------------

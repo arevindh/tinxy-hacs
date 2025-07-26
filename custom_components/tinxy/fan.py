@@ -1,4 +1,3 @@
-
 """
 Tinxy Fan Platform for Home Assistant.
 

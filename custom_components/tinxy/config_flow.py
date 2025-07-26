@@ -1,4 +1,3 @@
-
 """
 Config flow for the Tinxy Home Assistant integration.
 
