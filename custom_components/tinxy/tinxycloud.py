@@ -286,11 +286,13 @@ class TinxyCloud:
                 else:
                     # Handle single node devices
                     device_type = self._get_device_type(type_id_name, 0)
-                
                 devices.append(self._create_device_dict(data, device_type, 1))
+            elif type_id_name in self.DISABLED_DEVICES:
+                # Do not report errors for disabled devices
+                pass
             else:
                 self._logger.warning(
-                    "Unknown device %s, please create GitHub issue. Ignoring errors from EVA_HUB.",
+                    "Unknown device %s, please create GitHub issue.",
                     type_id_name
                 )
         # Handle multi-node devices
@@ -302,6 +304,9 @@ class TinxyCloud:
                         data, device_type, item_id + 1, node_name, data["deviceTypes"][item_id]
                     )
                 )
+        elif type_id_name in self.DISABLED_DEVICES:
+            # Do not report errors for disabled devices
+            pass
         else:
             self._logger.warning("Unknown multi-node device: %s", type_id_name)
 
