@@ -156,7 +156,7 @@ class TinxyLight(CoordinatorEntity, LightEntity):
         color_temp_kelvin = kwargs.get(ATTR_COLOR_TEMP_KELVIN, None)
 
         await self.api.set_device_state(
-            itemid=self.coordinator.data[self.idx]["device_id"],
+            item_id=self.coordinator.data[self.idx]["device_id"],
             device_number=str(self.coordinator.data[self.idx]["relay_no"]),
             state=1,
             brightness=real_brightness,
@@ -172,7 +172,7 @@ class TinxyLight(CoordinatorEntity, LightEntity):
         color_temp_kelvin = kwargs.get(ATTR_COLOR_TEMP_KELVIN, None)
 
         await self.api.set_device_state(
-            itemid=self.coordinator.data[self.idx]["device_id"],
+            item_id=self.coordinator.data[self.idx]["device_id"],
             device_number=str(self.coordinator.data[self.idx]["relay_no"]),
             state=0,
             brightness=real_brightness,
