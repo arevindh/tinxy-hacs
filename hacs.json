@@ -1,7 +1,7 @@
 {
     "name": "Tinxy Smart Devices",
     "render_readme": true,
-    "domains": ["switch", "light", "fan", "lock"],
+    "topics": ["homeassistant", "integration", "tinxy", "smart-home"],
     "homeassistant": "2023.1.0",
     "hacs": "1.30.0",
     "country": "IN"
