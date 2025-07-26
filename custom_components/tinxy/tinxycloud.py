@@ -88,8 +88,6 @@ class TinxyCloud:
     async def tinxy_request(self, path, payload=None, method="GET"):
         """Tinxy API request."""
 
-        pprint("new request to " + path)
-
         headers = {
             "Content-Type": "application/json",
             "Authorization": "Bearer " + self.host_config.api_token,
