@@ -7,7 +7,8 @@ Follows modern Python and Home Assistant coding standards for maintainability an
 """
 
 import logging
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
+from dataclasses import dataclass
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
@@ -16,24 +17,22 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from .const import DOMAIN
 
 # Logger for this module
-LOGGER = logging.getLogger(__name__)
+_LOGGER = logging.getLogger(__name__)
 
-# Constants for device state
 STATE_ON: int = 1
 STATE_OFF: int = 0
 
-def _merge_device_status(device: Dict[str, Any], status: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Merge device and status dictionaries for a switch.
-    Args:
-        device: Device information dictionary.
-        status: Status information dictionary.
-    Returns:
-        Merged dictionary containing device and status info.
-    """
-    merged = device.copy()
-    merged.update(status)
-    return merged
+@dataclass
+class TinxySwitchDevice:
+    """Dataclass representing a Tinxy switch device."""
+    id: str
+    name: str
+    icon: str
+    device_id: str
+    relay_no: int
+    status: int
+    state: int
+    device: Dict[str, Any]
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -49,50 +48,50 @@ async def async_setup_entry(
     """
     try:
         apidata, coordinator = hass.data[DOMAIN][entry.entry_id]
-    except Exception as exc:
-        LOGGER.error("Failed to retrieve Tinxy API data or coordinator: %s", exc)
-        return
+        await coordinator.async_config_entry_first_refresh()
 
-    await coordinator.async_config_entry_first_refresh()
-    switches: List[TinxySwitch] = []
-    status_list: Dict[str, Dict[str, Any]] = {}
-
-    try:
         all_devices = apidata.list_switches()
         result = await apidata.get_all_status()
+        switch_entities: List[TinxySwitch] = []
+
+        for device in all_devices:
+            device_id = device["id"]
+            if device_id in result:
+                merged = {**device, **result[device_id]}
+                switch_device = TinxySwitchDevice(
+                    id=merged["id"],
+                    name=merged.get("name", "Tinxy Switch"),
+                    icon=merged.get("icon", "mdi:switch"),
+                    device_id=merged["device_id"],
+                    relay_no=int(merged["relay_no"]),
+                    status=int(merged.get("status", 0)),
+                    state=int(merged.get("state", 0)),
+                    device=merged.get("device", {})
+                )
+                switch_entities.append(TinxySwitch(coordinator, apidata, switch_device))
+
+        async_add_entities(switch_entities)
+        _LOGGER.info("Added %d Tinxy switch entities.", len(switch_entities))
     except Exception as exc:
-        LOGGER.error("Error fetching Tinxy devices or status: %s", exc)
-        return
-
-    # Merge device info and status for each switch
-    for device in all_devices:
-        device_id = device.get("id")
-        if device_id in result:
-            status_list[device_id] = _merge_device_status(device, result[device_id])
-
-    # Create TinxySwitch entities for each device
-    for device_id, device_data in status_list.items():
-        switches.append(TinxySwitch(coordinator, apidata, device_id))
-
-    async_add_entities(switches)
+        _LOGGER.error("Error setting up Tinxy switch entities: %s", exc)
 
 class TinxySwitch(CoordinatorEntity, SwitchEntity):
     """
     Representation of a Tinxy switch entity in Home Assistant.
     """
 
-    def __init__(self, coordinator: Any, apidata: Any, idx: str) -> None:
+    def __init__(self, coordinator: Any, apidata: Any, device: TinxySwitchDevice) -> None:
         """
         Initialize the Tinxy switch entity.
         Args:
             coordinator: Data update coordinator.
             apidata: API data object for Tinxy.
-            idx: Device index (ID).
+            device: TinxySwitchDevice dataclass instance.
         """
-        super().__init__(coordinator, context=idx)
-        self.idx: str = idx
-        self.coordinator: Any = coordinator
-        self.api: Any = apidata
+        super().__init__(coordinator, context=device.id)
+        self.device = device
+        self.coordinator = coordinator
+        self.api = apidata
 
     @callback
     def _handle_coordinator_update(self) -> None:
@@ -100,101 +99,85 @@ class TinxySwitch(CoordinatorEntity, SwitchEntity):
         Handle updated data from the coordinator.
         Updates the entity state in Home Assistant.
         """
-        self._attr_is_on = self.coordinator.data[self.idx]["state"]
+        self._attr_is_on = self.coordinator.data[self.device.id]["state"]
         self.async_write_ha_state()
 
     @property
     def unique_id(self) -> str:
         """
         Return a unique ID for the entity.
-        Returns:
-            Unique string identifier for the switch.
         """
-        return self.coordinator.data[self.idx]["id"]
+        return self.device.id
 
     @property
     def icon(self) -> str:
         """
         Return the icon for the entity.
-        Returns:
-            Icon string for the switch.
         """
-        return self.coordinator.data[self.idx]["icon"]
+        return self.device.icon
 
     @property
     def name(self) -> str:
         """
         Return the name of the entity.
-        Returns:
-            Name string for the switch.
         """
-        return self.coordinator.data[self.idx]["name"]
+        return self.device.name
 
     @property
     def is_on(self) -> bool:
         """
         Return True if the switch is currently on, False otherwise.
-        Returns:
-            Boolean indicating switch state.
         """
-        return self.coordinator.data[self.idx]["state"]
+        return self.coordinator.data[self.device.id]["state"] == STATE_ON
 
     @property
     def available(self) -> bool:
         """
         Return True if the device is available, False otherwise.
-        Returns:
-            Boolean indicating device availability.
         """
-        return self.coordinator.data[self.idx]["status"] == 1
+        return self.coordinator.data[self.device.id]["status"] == 1
 
     @property
     def device_info(self) -> Dict[str, Any]:
         """
         Return device information for Home Assistant device registry.
-        Returns:
-            Dictionary with device information.
         """
-        return self.coordinator.data[self.idx]["device"]
+        return self.device.device
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """
         Turn the switch on.
-        Args:
-            kwargs: Additional arguments (unused).
         """
         try:
             await self.api.set_device_state(
-                self.coordinator.data[self.idx]["device_id"],
-                str(self.coordinator.data[self.idx]["relay_no"]),
+                self.device.device_id,
+                str(self.device.relay_no),
                 STATE_ON,
             )
-            LOGGER.info(
+            _LOGGER.info(
                 "Turned ON Tinxy switch: %s (relay %s)",
-                self.coordinator.data[self.idx]["device_id"],
-                self.coordinator.data[self.idx]["relay_no"]
+                self.device.device_id,
+                self.device.relay_no
             )
         except Exception as exc:
-            LOGGER.error("Failed to turn ON Tinxy switch %s: %s", self.idx, exc)
+            _LOGGER.error("Failed to turn ON Tinxy switch %s: %s", self.device.id, exc)
         await self.coordinator.async_request_refresh()
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """
         Turn the switch off.
-        Args:
-            kwargs: Additional arguments (unused).
         """
         try:
             await self.api.set_device_state(
-                self.coordinator.data[self.idx]["device_id"],
-                str(self.coordinator.data[self.idx]["relay_no"]),
+                self.device.device_id,
+                str(self.device.relay_no),
                 STATE_OFF,
             )
-            LOGGER.info(
+            _LOGGER.info(
                 "Turned OFF Tinxy switch: %s (relay %s)",
-                self.coordinator.data[self.idx]["device_id"],
-                self.coordinator.data[self.idx]["relay_no"]
+                self.device.device_id,
+                self.device.relay_no
             )
         except Exception as exc:
-            LOGGER.error("Failed to turn OFF Tinxy switch %s: %s", self.idx, exc)
+            _LOGGER.error("Failed to turn OFF Tinxy switch %s: %s", self.device.id, exc)
         await self.coordinator.async_request_refresh()

@@ -9,6 +9,7 @@ Follows modern Python and Home Assistant best practices for maintainability and 
 from __future__ import annotations
 import logging
 from typing import Any, TYPE_CHECKING, Dict, List, Optional
+from dataclasses import dataclass
 
 from homeassistant.components.fan import FanEntity, FanEntityFeature
 from homeassistant.config_entries import ConfigEntry
@@ -24,6 +25,7 @@ if TYPE_CHECKING:
 
 _LOGGER = logging.getLogger(__name__)
 
+
 # Preset mode mappings for Tinxy fans
 PRESET_MODES: List[str] = ["Low", "Medium", "High"]
 PRESET_TO_PERCENT: Dict[str, int] = {
@@ -36,6 +38,19 @@ PERCENT_TO_PRESET: Dict[int, str] = {
     66: "Medium",
     100: "High",
 }
+
+@dataclass
+class TinxyFanDevice:
+    """Dataclass representing a Tinxy fan device."""
+    id: str
+    name: str
+    icon: Optional[str]
+    device_id: str
+    relay_no: int
+    status: int
+    state: int
+    brightness: int
+    device: Dict[str, Any]
 
 
 async def async_setup_entry(
@@ -63,9 +78,19 @@ async def async_setup_entry(
         for device in all_devices:
             device_id = device["id"]
             if device_id in result:
-                # Merge static device info with dynamic status
                 merged = {**device, **result[device_id]}
-                fans.append(TinxyFan(coordinator, apidata, merged))
+                fan_device = TinxyFanDevice(
+                    id=merged["id"],
+                    name=merged.get("name", "Tinxy Fan"),
+                    icon=merged.get("icon"),
+                    device_id=merged["device_id"],
+                    relay_no=int(merged["relay_no"]),
+                    status=int(merged.get("status", 0)),
+                    state=int(merged.get("state", 0)),
+                    brightness=int(merged.get("brightness", 33)),
+                    device=merged.get("device", {})
+                )
+                fans.append(TinxyFan(coordinator, apidata, fan_device))
 
         async_add_entities(fans, update_before_add=True)
         _LOGGER.info("Added %d Tinxy fan entities.", len(fans))
@@ -76,7 +101,6 @@ async def async_setup_entry(
 class TinxyFan(CoordinatorEntity, FanEntity):
     """
     Representation of a Tinxy fan entity for Home Assistant.
-
     Handles state, preset modes, and interaction with TinxyCloud API.
     """
 
@@ -86,27 +110,18 @@ class TinxyFan(CoordinatorEntity, FanEntity):
         FanEntityFeature.PRESET_MODE | FanEntityFeature.TURN_ON | FanEntityFeature.TURN_OFF
     )
 
-    def __init__(
-        self,
-        coordinator: CoordinatorEntity,
-        apidata: Any,
-        device: Dict[str, Any]
-    ) -> None:
+    def __init__(self, coordinator: CoordinatorEntity, apidata: Any, device: TinxyFanDevice) -> None:
         """
         Initialize the Tinxy fan entity.
-
         Args:
             coordinator: Data update coordinator.
             apidata: TinxyCloud API instance.
-            device: Device information and status.
+            device: TinxyFanDevice dataclass instance.
         """
-        super().__init__(coordinator)
-        self._device: Dict[str, Any] = device
-        self.api: Any = apidata
-        self._attr_unique_id: Optional[str] = device.get("id")
-        self._attr_name: Optional[str] = device.get("name")
-        self._attr_icon: Optional[str] = device.get("icon")
-        self._attr_device_info: Optional[DeviceInfo] = device.get("device")
+        super().__init__(coordinator, context=device.id)
+        self.device = device
+        self.api = apidata
+        self.coordinator = coordinator
 
     @callback
     def _handle_coordinator_update(self) -> None:
@@ -117,28 +132,54 @@ class TinxyFan(CoordinatorEntity, FanEntity):
         self.async_write_ha_state()
 
     @property
+    def unique_id(self) -> Optional[str]:
+        """
+        Return the unique ID of the fan entity.
+        """
+        return self.device.id
+
+    @property
+    def icon(self) -> Optional[str]:
+        """
+        Return the icon for the fan entity, if available.
+        """
+        return self.device.icon
+
+    @property
+    def name(self) -> Optional[str]:
+        """
+        Return the name of the fan entity.
+        """
+        return self.device.name
+
+    @property
     def is_on(self) -> bool:
         """
         Return True if the fan is currently on.
         """
-        state = self._get_state("state")
-        return bool(state)
+        return self.coordinator.data[self.device.id]["state"] == 1
 
     @property
     def available(self) -> bool:
         """
         Return True if the device is available.
         """
-        return self._get_state("status") == 1
+        return self.coordinator.data[self.device.id]["status"] == 1
 
     @property
     def preset_mode(self) -> Optional[str]:
         """
         Return the current preset mode (Low, Medium, High).
         """
-        brightness = self._get_state("brightness")
-        # Map brightness to preset mode
+        brightness = self.coordinator.data[self.device.id].get("brightness", 33)
         return PERCENT_TO_PRESET.get(brightness, "Low")
+
+    @property
+    def device_info(self) -> Optional[DeviceInfo]:
+        """
+        Return device information for Home Assistant device registry.
+        """
+        return self.device.device
 
     async def async_turn_on(
         self,
@@ -148,94 +189,60 @@ class TinxyFan(CoordinatorEntity, FanEntity):
     ) -> None:
         """
         Turn the fan on, optionally setting a preset mode.
-
-        Args:
-            percentage: Not used (for compatibility).
-            preset_mode: Desired preset mode.
-            **kwargs: Additional arguments.
         """
         mode_setting: Optional[int] = self._calculate_percent(preset_mode) if preset_mode else None
         try:
             await self.api.set_device_state(
-                self._device["device_id"],
-                str(self._device["relay_no"]),
+                self.device.device_id,
+                str(self.device.relay_no),
                 1,
                 mode_setting,
             )
             _LOGGER.info(
-                "Turned on Tinxy fan '%s' with preset mode '%s'.", self._attr_name, preset_mode
+                "Turned on Tinxy fan '%s' with preset mode '%s'.", self.device.name, preset_mode
             )
         except Exception as exc:
-            _LOGGER.error("Failed to turn on Tinxy fan '%s': %s", self._attr_name, exc)
+            _LOGGER.error("Failed to turn on Tinxy fan '%s': %s", self.device.name, exc)
         await self.coordinator.async_request_refresh()
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """
         Turn the fan off.
-
-        Args:
-            **kwargs: Additional arguments.
         """
         try:
             await self.api.set_device_state(
-                self._device["device_id"],
-                str(self._device["relay_no"]),
+                self.device.device_id,
+                str(self.device.relay_no),
                 0,
             )
-            _LOGGER.info("Turned off Tinxy fan '%s'.", self._attr_name)
+            _LOGGER.info("Turned off Tinxy fan '%s'.", self.device.name)
         except Exception as exc:
-            _LOGGER.error("Failed to turn off Tinxy fan '%s': %s", self._attr_name, exc)
+            _LOGGER.error("Failed to turn off Tinxy fan '%s': %s", self.device.name, exc)
         await self.coordinator.async_request_refresh()
 
     async def async_set_preset_mode(self, preset_mode: str) -> None:
         """
         Set the preset mode of the fan.
-
-        Args:
-            preset_mode: Desired preset mode (Low, Medium, High).
         """
         percent = self._calculate_percent(preset_mode)
         try:
             await self.api.set_device_state(
-                self._device["device_id"],
-                str(self._device["relay_no"]),
+                self.device.device_id,
+                str(self.device.relay_no),
                 1,
                 percent,
             )
             _LOGGER.info(
-                "Set Tinxy fan '%s' to preset mode '%s' (%d%%).", self._attr_name, preset_mode, percent
+                "Set Tinxy fan '%s' to preset mode '%s' (%d%%).", self.device.name, preset_mode, percent
             )
         except Exception as exc:
-            _LOGGER.error("Failed to set preset mode for Tinxy fan '%s': %s", self._attr_name, exc)
+            _LOGGER.error("Failed to set preset mode for Tinxy fan '%s': %s", self.device.name, exc)
         await self.coordinator.async_request_refresh()
 
     def _calculate_percent(self, preset_mode: Optional[str]) -> int:
         """
         Convert preset mode to brightness percentage.
-
-        Args:
-            preset_mode: Preset mode string.
-        Returns:
-            Corresponding brightness percentage.
         """
         if preset_mode is None:
             return PRESET_TO_PERCENT["Low"]
         return PRESET_TO_PERCENT.get(preset_mode, PRESET_TO_PERCENT["Low"])
-
-    def _get_state(self, key: str) -> Any:
-        """
-        Safely get a state value from coordinator data or fallback to device dict.
-
-        Args:
-            key: State key to retrieve.
-        Returns:
-            State value or None if not found.
-        """
-        try:
-            return self.coordinator.data[self._device["id"]][key]
-        except (KeyError, TypeError) as exc:
-            _LOGGER.debug(
-                "State key '%s' not found for Tinxy fan '%s': %s. Falling back to device dict.",
-                key, self._attr_name, exc
-            )
-            return self._device.get(key)
