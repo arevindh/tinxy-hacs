@@ -1,5 +1,5 @@
-from datetime import timedelta
+"""Constants for the Tinxy integration."""
 
 DOMAIN = "tinxy"
-CONF_API_KEY = "api_key"
-MIN_TIME_BETWEEN_UPDATES = timedelta(seconds=30)
+COORDINATOR = "coordinator"
+TINXY_BACKEND = "https://ha-backend.tinxy.in/"
