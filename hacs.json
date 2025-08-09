@@ -1,5 +1,7 @@
 {
     "name": "Tinxy Smart Devices",
     "render_readme": true,
-    "domains": ["switch"]
+    "homeassistant": "2025.3.4",
+    "hacs": "1.30.0",
+    "country": "IN"
 }
