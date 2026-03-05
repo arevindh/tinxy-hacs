@@ -1,3 +1,39 @@
+# Deprecation Notice
+
+
+
+<p style="color:red; font-weight:bold;">
+
+⚠️ This integration has been deprecated. Please switch to the new repository:
+
+</p>
+
+
+
+<p style="color:red;">
+
+https://github.com/arevindh/ha-tinxy-cloud
+
+</p>
+
+
+
+The **Tinxy Smart Devices** integration is now available directly through HACS.
+
+
+
+## Migration Steps
+
+
+
+1. Open **Home Assistant** and go to **HACS**.
+
+2. Click the **three-dot menu** in the top-right corner.
+
+3. Locate the **Tinxy Integration** and remove it using the **delete/recycle bin** option.
+
+4. After removing it, search for **“Tinxy Smart Devices”** in HACS and install the integration from there.
+
 
 # Tinxy Home Assistant Integration
 
