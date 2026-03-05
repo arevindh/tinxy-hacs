@@ -32,7 +32,7 @@ The **Tinxy Smart Devices** integration is now available directly through HACS.
 
 3. Locate the **Tinxy Integration** and remove it using the **delete/recycle bin** option.
 
-4. After removing it, search for **“Tinxy Smart Devices”** in HACS and install the integration from there.
+4. After removing it, search for **“Tinxy”** in HACS and install the integration from there.
 
 5. Restart Home Assistant.
 
