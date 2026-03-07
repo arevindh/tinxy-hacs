@@ -28,7 +28,7 @@ The **Tinxy Smart Devices** integration is now available directly through HACS.
 
 1. Open **Home Assistant** and go to **HACS**.
 
-2. Click the **three-dot menu** in the top-right corner. Select custom repositories
+2. Click the **three-dot menu** in the top-right corner. Select custom repositories.
 
 3. Locate the **Tinxy Integration** repository and remove it using the delete/recycle bin option.
 
